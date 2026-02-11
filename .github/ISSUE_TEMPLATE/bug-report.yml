@@ -1,0 +1,67 @@
+name: "Bug report"
+description: Report a bug in this project
+title: "[BUG] "
+labels: ["bug", "triage-needed"]
+
+body:
+  - type: checkboxes
+    id: preflight
+    attributes:
+      label: Pre-flight checks
+      options:
+        - label: I searched existing issues and didn't find a match.
+          required: true
+        - label: I can reproduce this on a clean environment (fresh venv).
+          required: true
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: Briefly describe the bug.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Minimal reproducible example
+      description: |
+        Include a minimal code example for reproducibility.
+        See: https://stackoverflow.com/help/minimal-reproducible-example
+      render: python
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior / logs / stack trace
+      description: Paste the error and any relevant logs.
+      render: text
+    validations:
+      required: true
+
+  - type: textarea
+    id: env
+    attributes:
+      label: Environment
+      description: Provide exact versions and hardware.
+      placeholder: |
+        OS: Ubuntu 22.04
+        Python: 3.10.13
+        gmol-core: v0.1.0
+    validations:
+      required: true
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: Additional context / screenshots
