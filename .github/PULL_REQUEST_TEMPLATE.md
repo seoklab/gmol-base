@@ -2,7 +2,7 @@
 
 <!-- Use [x] to mark item done, or just click the checkboxes with device pointer -->
 
-- [ ] Have you checked that there aren't other open [pull requests](http://github.com/seoklab/gmol-core/pulls) for the same issue?
+- [ ] Have you checked that there aren't other open [pull requests](http://github.com/seoklab/gmol-base/pulls) for the same issue?
 - [ ] Have you [linked the issue(s)](#linked-issues) you are working on (if any)?
 
 If the change is related to the source code, tests, or build environments, please also check the following:

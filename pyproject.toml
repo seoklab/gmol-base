@@ -3,8 +3,8 @@ requires = ["setuptools>=80", "setuptools-scm[simple]>=8"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "gmol-core"
-description = "Core components of GalaxyMol"
+name = "gmol-base"
+description = "Basic components of GalaxyMol"
 readme = "README.md"
 authors = [{ name = "Seoklab members", email = "contact@seoklab.org" }]
 maintainers = [{ name = "Nuri Jung", email = "jnooree@snu.ac.kr" }]
@@ -34,8 +34,8 @@ classifiers = [
 dynamic = ["version"]
 
 [project.urls]
-Documentation = "https://gmol-core.readthedocs.io/"
-Repository = "https://github.com/seoklab/gmol-core.git"
+Documentation = "https://gmol-base.readthedocs.io/"
+Repository = "https://github.com/seoklab/gmol-base.git"
 
 [dependency-groups]
 dev = [

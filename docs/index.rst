@@ -1,9 +1,9 @@
-.. gmol-core documentation master file, created by
+.. gmol-base documentation master file, created by
    sphinx-quickstart on Thu Sep  5 14:52:18 2024.
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-gmol-core Python API Reference
+gmol-base Python API Reference
 ==============================
 
 .. autosummary::
@@ -11,7 +11,7 @@ gmol-core Python API Reference
    :template: custom-module.rst
    :recursive:
 
-   gmol.core
+   gmol.base
 
 Indices and tables
 ==================

@@ -53,7 +53,7 @@ jobs:
 
     environment:
       name: ${{ github.event_name == 'push' && 'production' || 'staging' }}
-      url: ${{ github.event_name == 'push' && 'https://pypi.org' || 'https://test.pypi.org' }}/p/gmol-core
+      url: ${{ github.event_name == 'push' && 'https://pypi.org' || 'https://test.pypi.org' }}/p/gmol-base
 
     permissions:
       id-token: write

@@ -13,7 +13,7 @@ from sphinx.ext import autodoc
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
-project = "gmol-core"
+project = "gmol-base"
 copyright = "2026 SNU Compbio Lab"
 author = "SNU Compbio Lab"
 
@@ -62,7 +62,7 @@ html_theme_options = {
     "icon_links": [
         {
             "name": "GitHub",
-            "url": "https://github.com/seoklab/gmol-core",
+            "url": "https://github.com/seoklab/gmol-base",
             "icon": "fa-brands fa-github",
         }
     ],

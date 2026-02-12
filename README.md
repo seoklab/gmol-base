@@ -1,6 +1,6 @@
-# gmol-core
+# gmol-base
 
-Core components of GalaxyMol.
+Basic components of GalaxyMol.
 
 ## Notes to developers
 

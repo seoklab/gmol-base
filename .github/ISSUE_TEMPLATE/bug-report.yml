@@ -57,7 +57,7 @@ body:
       placeholder: |
         OS: Ubuntu 22.04
         Python: 3.10.13
-        gmol-core: v0.1.0
+        gmol-base: v0.1.0
     validations:
       required: true
 
