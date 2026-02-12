@@ -10,6 +10,7 @@ authors = [{ name = "Seoklab members", email = "contact@seoklab.org" }]
 maintainers = [{ name = "Nuri Jung", email = "jnooree@snu.ac.kr" }]
 requires-python = ">=3.10,<3.14"
 dependencies = [
+    "networkx>=3.0,<4.0",
     "numpy",
     "nurikit>=0.1.0a16,<0.2.0",
     "pandas>=2.0,<3.0",
