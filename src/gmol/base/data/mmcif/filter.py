@@ -5,7 +5,7 @@ import pandas as pd
 from numpy.typing import NDArray
 from scipy.spatial import KDTree
 
-from gmol.core.const import (
+from gmol.base.const import (
     CRYSTALLIZATION_AIDS,
     CRYSTALLOGRAPHY_METHODS,
     IONS,

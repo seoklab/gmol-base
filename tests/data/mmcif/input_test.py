@@ -5,14 +5,14 @@ import numpy as np
 import pytest
 from pydantic import TypeAdapter
 
-from gmol.core.data.mmcif import (
+from gmol.base.data.mmcif import (
     ChemComp,
     MolType,
     filter_mmcif,
     load_mmcif_single,
     mmcif_assemblies,
 )
-from gmol.core.data.mmcif.input import (
+from gmol.base.data.mmcif.input import (
     ExtraBondPartner,
     build_input,
     chain_type_to_constants,

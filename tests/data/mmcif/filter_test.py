@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from gmol.core.data.mmcif import Assembly, ChemComp, Mmcif, filter_mmcif
+from gmol.base.data.mmcif import Assembly, ChemComp, Mmcif, filter_mmcif
 
 
 def test_filter_mmcif(

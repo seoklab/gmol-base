@@ -3,8 +3,8 @@ from pathlib import Path
 import pytest
 from rdkit import Chem
 
-from gmol.core.data.mmcif import ChemComp, ResidueId, load_components
-from gmol.core.data.mmcif.smiles import (
+from gmol.base.data.mmcif import ChemComp, ResidueId, load_components
+from gmol.base.data.mmcif.smiles import (
     input_from_reference,
     mol_from_chem_comp,
     reference_from_mmcif,

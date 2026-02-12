@@ -4,7 +4,7 @@ import numpy as np
 from numpy.typing import NDArray
 from rdkit import Chem
 
-from gmol.core.wrapper.rdkit import smi2mol
+from gmol.base.wrapper.rdkit import smi2mol
 from .assembly import Branch, ResidueId
 from .parse import ChemComp, ChemCompAtom, ChemCompBond
 

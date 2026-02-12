@@ -11,7 +11,7 @@ from typing import ClassVar, Protocol
 import numpy as np
 from numpy.typing import NDArray
 
-from gmol.core.const import aa_restype_3to1, modres
+from gmol.base.const import aa_restype_3to1, modres
 from .parse import (
     AtomSite,
     BioAssembly,

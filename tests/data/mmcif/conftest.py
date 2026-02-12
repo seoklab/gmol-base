@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from gmol.core.data.mmcif import (
+from gmol.base.data.mmcif import (
     ChemComp,
     load_components,
     load_mmcif_single,

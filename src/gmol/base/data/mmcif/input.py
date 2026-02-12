@@ -13,7 +13,7 @@ from pydantic.dataclasses import dataclass
 from rdkit import Chem
 from scipy.spatial import distance as D
 
-from gmol.core import const
+from gmol.base import const
 from .assembly import (
     Assembly,
     Chain,

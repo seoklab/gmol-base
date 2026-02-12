@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from gmol.core.data.mmcif import (
+from gmol.base.data.mmcif import (
     ChemComp,
     ResidueId,
     SequenceToResidue,

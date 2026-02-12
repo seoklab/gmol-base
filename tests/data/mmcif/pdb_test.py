@@ -1,6 +1,6 @@
 import nuri
 
-from gmol.core.data.mmcif import Assembly, Mmcif
+from gmol.base.data.mmcif import Assembly, Mmcif
 
 
 def test_to_pdb(sample_assembly: tuple[Mmcif, Assembly]):

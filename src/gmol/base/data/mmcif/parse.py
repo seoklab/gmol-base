@@ -55,7 +55,7 @@ from pydantic import (
 )
 from tqdm import tqdm
 
-from gmol.core.types import LooseModel
+from gmol.base.types import LooseModel
 
 __all__ = ["ChemComp", "Mmcif", "load_components", "load_mmcif_single"]
 
