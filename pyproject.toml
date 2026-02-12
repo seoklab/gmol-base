@@ -127,6 +127,7 @@ networkx = "nx"
 [tool.mypy]
 files = ["src/"]
 mypy_path = "$MYPY_CONFIG_FILE_DIR/src"
+explicit_package_bases = true
 
 plugins = ["pydantic.mypy"]
 
