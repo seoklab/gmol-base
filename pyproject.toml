@@ -19,10 +19,23 @@ dependencies = [
     "scipy>=1.15.3,<2.0.0",
     "tqdm",
 ]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3 :: Only",
+    "Topic :: Software Development :: Libraries",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+    "Topic :: Scientific/Engineering :: Chemistry",
+    "Operating System :: POSIX :: Linux",
+]
 dynamic = ["version"]
 
 [project.urls]
-repository = "https://github.com/seoklab/gmol-core.git"
+Documentation = "https://gmol-core.readthedocs.io/"
+Repository = "https://github.com/seoklab/gmol-core.git"
 
 [dependency-groups]
 dev = [
