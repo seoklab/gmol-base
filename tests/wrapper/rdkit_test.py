@@ -55,6 +55,7 @@ def test_write_mols_list_pdb(
     assert "MODEL        1" in content
     assert "MODEL        2" in content
     assert content.count("ENDMDL") == 2
+    assert content.count("END") == 3  # 2 ENDMDL + 1 final END
 
 
 def test_write_mols_skips_none(tmp_path: Path, ethane_mol: Chem.Mol):
