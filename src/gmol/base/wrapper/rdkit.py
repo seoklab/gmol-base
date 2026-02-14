@@ -1,4 +1,5 @@
 import warnings
+from pathlib import Path
 
 from rdkit import Chem
 from rdkit.Chem import AllChem
@@ -100,3 +101,43 @@ def generate_conformer(
             return orig_m
         else:
             raise ValueError(f"Conformer generation failed: {e}") from e
+
+
+def write_mols(
+    save_path: Path | str,
+    mols: Chem.Mol | list[Chem.Mol],
+    sdf_kekulize: bool = False,
+) -> None:
+    """Write a list of RDKit Mol objects to a file.
+
+    Supported extensions are `.sdf` and `.pdb`.
+
+    :param save_path: Path to the output file.
+    :param mols: Molecule or list of molecules to write; None entries are skipped.
+    :param sdf_kekulize: If True, kekulize molecules when writing to an SDF file.
+    """
+    if isinstance(mols, Chem.Mol):
+        mols = [mols]
+
+    save_path = Path(save_path)
+    ext = save_path.suffix.lower()
+
+    if ext == ".sdf":
+        with Chem.SDWriter(str(save_path)) as w:
+            w.SetKekulize(sdf_kekulize)
+            for m in mols:
+                if m is not None:  # pyright: ignore[reportUnnecessaryComparison]
+                    w.write(m)
+    elif ext == ".pdb":
+        with save_path.open("w") as f:
+            for idx, m in enumerate(mols, start=1):
+                if m is not None:  # pyright: ignore[reportUnnecessaryComparison]
+                    pdb_block = Chem.MolToPDBBlock(m)
+                    f.write(f"MODEL     {idx}\n")
+                    f.write(pdb_block)
+                    f.write("ENDMDL\n")
+
+    else:
+        raise ValueError(
+            f"Unsupported file extension '{ext}'. Supported: .sdf, .pdb"
+        )
