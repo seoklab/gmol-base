@@ -1,7 +1,13 @@
-import warnings
+import logging
+import re
+from collections.abc import Iterable
+from itertools import count
+from pathlib import Path
 
 from rdkit import Chem
 from rdkit.Chem import AllChem
+
+_logger = logging.getLogger(__name__)
 
 
 def smi2mol(
@@ -56,16 +62,15 @@ def generate_conformer(
 
         # Attempt embedding
         params = AllChem.ETKDGv3()
-        params.maxAttempts = max_attempts
+        params.maxIterations = max_attempts
         success = False
 
         if AllChem.EmbedMolecule(new_m, params) == 0:
             success = True
 
         if not success:
-            warnings.warn(
-                "Initial embedding failed, retrying with random coordinates.",
-                stacklevel=1,
+            _logger.warning(
+                "Initial embedding failed, retrying with random coordinates."
             )
             params.useRandomCoords = True
             if AllChem.EmbedMolecule(new_m, params) != 0:
@@ -81,9 +86,8 @@ def generate_conformer(
             maxIters=optimize_iters,
         )
         if opt_status != 0:
-            warnings.warn(
-                f"MMFF optimization returned status {opt_status}.",
-                stacklevel=1,
+            _logger.warning(
+                "MMFF optimization returned status %s.", opt_status
             )
 
         # Assign new stereochemistry for featurizers
@@ -91,12 +95,73 @@ def generate_conformer(
         Chem.rdmolops.AssignStereochemistryFrom3D(result)
         return result
 
-    except Exception as e:
+    except Exception:
         if ignore_failures:
-            warnings.warn(
-                "Generating conformer failed. Use the original conformer.",
-                stacklevel=1,
+            _logger.exception(
+                "Generating conformer failed. Use the original conformer."
             )
             return orig_m
-        else:
-            raise ValueError(f"Conformer generation failed: {e}") from e
+
+        raise
+
+
+_end_re = re.compile(r"^END\s+", re.MULTILINE)
+
+
+def write_mols(
+    save_path: Path | str,
+    mols: Chem.Mol | None | Iterable[Chem.Mol | None],
+    sdf_kekulize: bool = False,
+) -> None:
+    """Write a list of RDKit Mol objects to a file.
+
+    Supported extensions are ``.sdf`` and ``.pdb``.
+
+    :param save_path: Path to the output file.
+    :param mols: Molecule or list of molecules to write; None entries are skipped.
+    :param sdf_kekulize: If True, kekulize molecules when writing to an SDF file.
+    """
+    if mols is None:
+        return
+
+    if isinstance(mols, Chem.Mol):
+        mols = [mols]
+
+    save_path = Path(save_path)
+    ext = save_path.suffix.lower()
+
+    if ext == ".sdf":
+        with Chem.SDWriter(str(save_path)) as w:
+            w.SetKekulize(sdf_kekulize)
+            for m in mols:
+                if m is not None:
+                    w.write(m)
+    elif ext == ".pdb":
+        with save_path.open("w") as f:
+            written = False
+            model_num = count(1)
+            for m in mols:
+                if m is not None:
+                    written = True
+                    idx = next(model_num)
+
+                    # rdkit writes all conformers to pdb by default, but we
+                    # only want to write single conformer per molecule.
+                    # If there are no conformers, confId=-1 will be used to
+                    # write the molecule without 3D coordinates.
+                    confid = -1
+                    if m.GetNumConformers() > 1:
+                        confid = m.GetConformer().GetId()
+
+                    pdb_block = Chem.MolToPDBBlock(m, confId=confid)
+                    pdb_block = _end_re.sub("", pdb_block)
+                    f.write(f"MODEL {idx:8d}\n")
+                    f.write(pdb_block)
+                    f.write("ENDMDL\n")
+
+            if written:
+                f.write("END\n")
+    else:
+        raise ValueError(
+            f"Unsupported file extension '{ext}'. Supported: .sdf, .pdb"
+        )
