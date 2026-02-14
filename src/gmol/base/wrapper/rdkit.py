@@ -105,7 +105,7 @@ def generate_conformer(
         raise
 
 
-_end_re = re.compile(r"^END\s*", re.MULTILINE)
+_end_re = re.compile(r"^END\s+", re.MULTILINE)
 
 
 def write_mols(
@@ -144,11 +144,21 @@ def write_mols(
                 if m is not None:
                     written = True
                     idx = next(model_num)
-                    pdb_block = Chem.MolToPDBBlock(m)
+
+                    # rdkit writes all conformers to pdb by default, but we
+                    # only want to write single conformer per molecule.
+                    # If there are no conformers, confId=-1 will be used to
+                    # write the molecule without 3D coordinates.
+                    confid = -1
+                    if m.GetNumConformers() > 1:
+                        confid = m.GetConformer().GetId()
+
+                    pdb_block = Chem.MolToPDBBlock(m, confId=confid)
                     pdb_block = _end_re.sub("", pdb_block)
                     f.write(f"MODEL {idx:8d}\n")
                     f.write(pdb_block)
                     f.write("ENDMDL\n")
+
             if written:
                 f.write("END\n")
     else:
