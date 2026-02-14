@@ -115,7 +115,7 @@ def write_mols(
 ) -> None:
     """Write a list of RDKit Mol objects to a file.
 
-    Supported extensions are `.sdf` and `.pdb`.
+    Supported extensions are ``.sdf`` and ``.pdb``.
 
     :param save_path: Path to the output file.
     :param mols: Molecule or list of molecules to write; None entries are skipped.
