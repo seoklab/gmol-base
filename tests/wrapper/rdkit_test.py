@@ -3,7 +3,7 @@ from pathlib import Path
 import pytest
 from rdkit import Chem
 
-from gmol.base.wrapper.rdkit import smi2mol, write_mols
+from gmol.base.wrapper.rdkit import generate_conformer, smi2mol, write_mols
 
 
 @pytest.fixture
@@ -26,6 +26,30 @@ def test_write_mols_single_mol_sdf(tmp_path: Path, ethane_mol: Chem.Mol):
     assert Chem.MolToSmiles(mols[0]) == "CC"
 
 
+def test_write_mols_single_mol_multi_conf_sdf(
+    tmp_path: Path,
+    ethane_mol: Chem.Mol,
+):
+    mol = generate_conformer(ethane_mol, ignore_failures=False)
+
+    out = tmp_path / "out.sdf"
+    write_mols(out, mol)
+    assert out.is_file()
+    mols = list(Chem.SDMolSupplier(str(out)))
+    assert len(mols) == 1
+    assert mols[0] is not None
+    assert Chem.MolToSmiles(mols[0]) == "CC"
+
+    mol.AddConformer(mol.GetConformer(), assignId=True)
+
+    write_mols(out, mol)
+    assert out.is_file()
+    mols = list(Chem.SDMolSupplier(str(out)))
+    assert len(mols) == 1
+    assert mols[0] is not None
+    assert Chem.MolToSmiles(mols[0]) == "CC"
+
+
 def test_write_mols_single_mol_pdb(tmp_path: Path, ethane_mol: Chem.Mol):
     out = tmp_path / "out.pdb"
     write_mols(out, ethane_mol)
@@ -33,6 +57,30 @@ def test_write_mols_single_mol_pdb(tmp_path: Path, ethane_mol: Chem.Mol):
     content = out.read_text()
     assert "MODEL        1" in content
     assert "ENDMDL" in content
+
+
+def test_write_mols_single_mol_multi_conf_pdb(
+    tmp_path: Path,
+    ethane_mol: Chem.Mol,
+):
+    mol = generate_conformer(ethane_mol, ignore_failures=False)
+
+    out = tmp_path / "out.pdb"
+    write_mols(out, mol)
+    assert out.is_file()
+    content = out.read_text()
+    assert content.count("MODEL        1") == 1
+    assert content.count("MODEL") == 1
+    assert content.count("ENDMDL") == 1
+
+    mol.AddConformer(mol.GetConformer(), assignId=True)
+
+    write_mols(out, mol)
+    assert out.is_file()
+    content = out.read_text()
+    assert content.count("MODEL        1") == 1
+    assert content.count("MODEL") == 1
+    assert content.count("ENDMDL") == 1
 
 
 def test_write_mols_list_sdf(
