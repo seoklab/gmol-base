@@ -1,4 +1,5 @@
 import warnings
+from collections.abc import Iterable
 from pathlib import Path
 
 from rdkit import Chem
@@ -105,7 +106,7 @@ def generate_conformer(
 
 def write_mols(
     save_path: Path | str,
-    mols: Chem.Mol | list[Chem.Mol],
+    mols: Chem.Mol | None | Iterable[Chem.Mol | None],
     sdf_kekulize: bool = False,
 ) -> None:
     """Write a list of RDKit Mol objects to a file.
@@ -116,6 +117,9 @@ def write_mols(
     :param mols: Molecule or list of molecules to write; None entries are skipped.
     :param sdf_kekulize: If True, kekulize molecules when writing to an SDF file.
     """
+    if mols is None:
+        return
+
     if isinstance(mols, Chem.Mol):
         mols = [mols]
 
@@ -126,17 +130,16 @@ def write_mols(
         with Chem.SDWriter(str(save_path)) as w:
             w.SetKekulize(sdf_kekulize)
             for m in mols:
-                if m is not None:  # pyright: ignore[reportUnnecessaryComparison]
+                if m is not None:
                     w.write(m)
     elif ext == ".pdb":
         with save_path.open("w") as f:
             for idx, m in enumerate(mols, start=1):
-                if m is not None:  # pyright: ignore[reportUnnecessaryComparison]
+                if m is not None:
                     pdb_block = Chem.MolToPDBBlock(m)
                     f.write(f"MODEL     {idx}\n")
                     f.write(pdb_block)
                     f.write("ENDMDL\n")
-
     else:
         raise ValueError(
             f"Unsupported file extension '{ext}'. Supported: .sdf, .pdb"
