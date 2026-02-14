@@ -1,6 +1,7 @@
 import re
 import warnings
 from collections.abc import Iterable
+from itertools import count
 from pathlib import Path
 
 from rdkit import Chem
@@ -139,10 +140,11 @@ def write_mols(
     elif ext == ".pdb":
         with save_path.open("w") as f:
             written = False
-
-            for idx, m in enumerate(mols, start=1):
+            model_num = count(1)
+            for m in mols:
                 if m is not None:
                     written = True
+                    idx = next(model_num)
                     pdb_block = Chem.MolToPDBBlock(m)
                     pdb_block = _end_re.sub("", pdb_block)
                     f.write(f"MODEL {idx:8d}\n")
