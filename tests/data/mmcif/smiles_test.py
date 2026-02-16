@@ -1,9 +1,17 @@
 from pathlib import Path
 
+import networkx as nx
 import pytest
+from pydantic import TypeAdapter
 from rdkit import Chem
 
-from gmol.base.data.mmcif import ChemComp, ResidueId, load_components
+from gmol.base.data.mmcif import (
+    ChemComp,
+    ResidueId,
+    load_components,
+    load_mmcif_single,
+    mmcif_assemblies,
+)
 from gmol.base.data.mmcif.smiles import (
     input_from_reference,
     mol_from_chem_comp,
@@ -84,3 +92,29 @@ def test_to_smiles(chem_comp: ChemComp):
     assert set(ref.atom_ids) == {
         atom.atom_id for atom in chem_comp.atoms if atom.type_symbol != "H"
     }
+
+
+def test_reference_from_mmcif_branched(test_data: Path):
+    ccd = TypeAdapter(dict[str, ChemComp]).validate_json(
+        test_data.joinpath("ccd", "components_5m7m.json").read_bytes()
+    )
+    asm = mmcif_assemblies(
+        load_mmcif_single(test_data / "mmcif" / "5m7m.cif"),
+        ccd,
+    )[0]
+
+    chain = asm.chains["B"]
+    ccs = [
+        (residue.residue_id, residue.chem_comp)
+        for residue in asm.residues_of_chain(chain)
+    ]
+    lig = reference_from_mmcif(ccs, chain.branches)
+
+    g = nx.Graph()
+    g.add_nodes_from(atom.atom_id for atom in lig.atoms)
+    for bond in lig.bonds:
+        assert bond.atom_id_1 in g
+        assert bond.atom_id_2 in g
+        g.add_edge(bond.atom_id_1, bond.atom_id_2)
+
+    assert nx.is_connected(g)
