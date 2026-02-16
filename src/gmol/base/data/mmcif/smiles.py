@@ -35,8 +35,16 @@ def mol_from_chem_comp(
 
     rw_mol = Chem.RWMol()
 
+    bond_ids = {b.atom_id_1 for b in bonds} | {b.atom_id_2 for b in bonds}
+
     atom_id_to_index: dict[str, int] = {}
     for atom_data in atoms:
+        # Some entries produce isolated explicit H atoms during processing.
+        # RemoveHs() cannot delete degree-0 H atoms and emits warnings, so
+        # drop them here when the bond/heavy-atom partner is missing.
+        if atom_data.type_symbol == "H" and atom_data.atom_id not in bond_ids:
+            continue
+
         atom = Chem.Atom(atom_data.type_symbol)
         atom.SetProp("atom_id", atom_data.atom_id)
         atom.SetIsAromatic(atom_data.pdbx_aromatic_flag)
