@@ -1,3 +1,4 @@
+import logging
 from dataclasses import dataclass
 
 import networkx as nx
@@ -8,6 +9,8 @@ from rdkit import Chem
 from gmol.base.wrapper.rdkit import smi2mol
 from .assembly import Branch, ResidueId
 from .parse import ChemComp, ChemCompAtom, ChemCompBond
+
+_logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -97,6 +100,15 @@ def mol_from_chem_comp(
             n.GetIdx() for n in b.GetNeighbors() if n.GetIdx() != a.GetIdx()
         ]
         if not a_subs or not b_subs:
+            _logger.warning(
+                (
+                    "Invalid bond stereo config: bond %d (%d-%d) has "
+                    "absolute_config but insufficient neighbors"
+                ),
+                bond.GetIdx(),
+                a.GetIdx(),
+                b.GetIdx(),
+            )
             continue
 
         bond.SetStereo(Chem.BondStereo.STEREOE)
