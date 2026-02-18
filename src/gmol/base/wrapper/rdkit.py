@@ -126,6 +126,10 @@ def read_mols(
         raise FileNotFoundError(f"File not found: {file_path}")
 
     ext = file_path.suffix.lower()
+    if ext not in (".mol2", ".sdf", ".pdb"):
+        raise ValueError(
+            f"Unsupported file extension '{ext}'. Supported formats: .mol2, .sdf, .pdb."
+        )
 
     try:
         if ext == ".mol2":
@@ -149,10 +153,6 @@ def read_mols(
                 ),
             )
             mols = [mol] if mol is not None else []
-        else:
-            raise ValueError(
-                f"Unsupported file extension '{ext}'. Supported formats: .mol2, .sdf, .pdb."
-            )
 
         if sanitize:
             for mol in mols:
