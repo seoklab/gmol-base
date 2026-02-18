@@ -131,38 +131,34 @@ def read_mols(
             f"Unsupported file extension '{ext}'. Supported formats: .mol2, .sdf, .pdb."
         )
 
-    try:
-        if ext == ".mol2":
-            mol = cast(
-                Chem.Mol | None,
-                Chem.MolFromMol2File(
-                    str(file_path), sanitize=False, removeHs=False
-                ),
-            )
-            mols = [mol] if mol is not None else []
-        elif ext == ".sdf":
-            with Chem.SDMolSupplier(
+    if ext == ".mol2":
+        mol = cast(
+            Chem.Mol | None,
+            Chem.MolFromMol2File(
                 str(file_path), sanitize=False, removeHs=False
-            ) as suppl:
-                mols = [m for m in suppl if m is not None]  # pyright: ignore[reportUnnecessaryComparison]
-        elif ext == ".pdb":
-            mol = cast(
-                Chem.Mol | None,
-                Chem.MolFromPDBFile(
-                    str(file_path), sanitize=False, removeHs=False
-                ),
-            )
-            mols = [mol] if mol is not None else []
+            ),
+        )
+        mols = [mol] if mol is not None else []
+    elif ext == ".sdf":
+        with Chem.SDMolSupplier(
+            str(file_path), sanitize=False, removeHs=False
+        ) as suppl:
+            mols = [m for m in suppl if m is not None]  # pyright: ignore[reportUnnecessaryComparison]
+    elif ext == ".pdb":
+        mol = cast(
+            Chem.Mol | None,
+            Chem.MolFromPDBFile(
+                str(file_path), sanitize=False, removeHs=False
+            ),
+        )
+        mols = [mol] if mol is not None else []
 
-        if sanitize:
-            for mol in mols:
-                Chem.SanitizeMol(mol)
+    if sanitize:
+        for mol in mols:
+            Chem.SanitizeMol(mol)
 
-        if remove_h:
-            mols = [Chem.RemoveHs(mol, sanitize=sanitize) for mol in mols]
-
-    except Exception as exc:
-        raise ValueError(f"Error processing molecule: {exc}") from exc
+    if remove_h:
+        mols = [Chem.RemoveHs(mol, sanitize=sanitize) for mol in mols]
 
     return mols
 
