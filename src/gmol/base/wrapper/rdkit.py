@@ -136,20 +136,49 @@ def _split_read_mol2(path: str):
                 yield mol
 
 
-_model_re = re.compile(r"^MODEL\s+\d+\s*$", re.MULTILINE)
-_endmdl_re = re.compile(r"^ENDMDL\s*$", re.MULTILINE)
+def _split_read_pdb(path: str):
 
+    def _read_mol(block: list[str]):
+        pdb = "".join(block)
+        mol = Chem.MolFromPDBBlock(
+            pdb,
+            sanitize=False,
+            removeHs=False,
+        )
+        return cast(Chem.Mol | None, mol)
 
-def _split_pdb_models(pdb_text: str) -> list[str]:
-    starts = [m.start() for m in _model_re.finditer(pdb_text)]
-    ends = [m.end() for m in _endmdl_re.finditer(pdb_text)]
-    if not starts or not ends or len(starts) != len(ends):
-        return [pdb_text]
+    with open(path) as f:
+        block: list[str] = []
 
-    blocks: list[str] = []
-    for s, e in zip(starts, ends, strict=True):
-        blocks.append(pdb_text[s:e] + "\nEND\n")
-    return blocks
+        for line in f:
+            if line.startswith("MODEL"):
+                if not block:
+                    continue
+
+                _logger.warning(
+                    (
+                        "Multiple MODEL entries found in PDB file without "
+                        "ENDMDL. Splitting anyway after MODEL record."
+                    )
+                )
+                line = "ENDMDL"
+
+            if line.startswith("ENDMDL"):
+                mol = _read_mol(block)
+                if mol is not None:
+                    yield mol
+
+                block.clear()
+                continue
+
+            block.append(line)
+
+        if block:
+            # If no "MODEL/ENDMDL" is found, the whole file is interpreted as a
+            # single molecule.
+            mol = _read_mol(block)
+            if mol is not None:
+                yield mol
 
 
 def read_mols(
@@ -185,16 +214,7 @@ def read_mols(
         ) as suppl:
             mols = [m for m in suppl if cast(Chem.Mol | None, m) is not None]
     elif ext == ".pdb":
-        pdb_text = file_path.read_text()
-        blocks = _split_pdb_models(pdb_text)
-        mols = []
-        for blk in blocks:
-            mol = cast(
-                Chem.Mol | None,
-                Chem.MolFromPDBBlock(blk, sanitize=False, removeHs=False),
-            )
-            if mol is not None:
-                mols.append(mol)
+        mols = list(_split_read_pdb(str(file_path)))
 
     if sanitize:
         for mol in mols:
