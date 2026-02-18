@@ -172,6 +172,18 @@ def test_read_mols_remove_h(test_data: Path, ligand: str):
         assert no_h.GetNumAtoms() <= with_h.GetNumAtoms()
 
 
+def test_read_mols_multiple_mol2(test_data: Path):
+    mol2_path = test_data / "ligands" / "ligands.mol2"
+    mols = read_mols(mol2_path)
+    assert len(mols) == 2
+
+    assert mols[0].GetNumAtoms() == 56
+    assert mols[0].GetNumBonds() == 59
+
+    assert mols[1].GetNumAtoms() == 22
+    assert mols[1].GetNumBonds() == 25
+
+
 @pytest.mark.parametrize("ligand", LIGAND_NAMES)
 def test_write_mols_ligands_sdf(tmp_path: Path, test_data: Path, ligand: str):
     """Read SDF from ligands dir, write to tmp SDF, read back and compare count."""
