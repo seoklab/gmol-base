@@ -56,6 +56,7 @@ from pydantic import (
 from tqdm import tqdm
 
 from gmol.base.types import LooseModel
+from .write import mmcif_bond_order, mmcif_write_block
 
 __all__ = ["ChemComp", "Mmcif", "load_components", "load_mmcif_single"]
 
@@ -380,6 +381,32 @@ def _join_chem_comp(
     return chem_comps
 
 
+def _filter_assembly_gens(
+    gens: list[BioAssemblyGen],
+    kept_asym_ids: set[str],
+) -> list[BioAssemblyGen]:
+    filtered = []
+    for g in gens:
+        kept_ids = [aid for aid in g.asym_id_list if aid in kept_asym_ids]
+        if not kept_ids:
+            continue
+        if len(g.operations) == 1:
+            oper_expr = ",".join(g.operations[0])
+        else:
+            oper_expr = "".join(
+                "(" + ",".join(ops) + ")" for ops in g.operations
+            )
+        filtered.append(
+            BioAssemblyGen.model_validate(
+                {
+                    "asym_id_list": ",".join(kept_ids),
+                    "oper_expression": oper_expr,
+                }
+            )
+        )
+    return filtered
+
+
 class Mmcif(LooseModel):
     entry_id: str = Field(validation_alias=AliasPath("entry", 0, "id"))
     exptl_method: str = Field(validation_alias=AliasPath("exptl", 0, "method"))
@@ -503,6 +530,507 @@ class Mmcif(LooseModel):
         for d in v:
             ret[d["id"]] = d["entity_id"]
         return ret
+
+    def filter_chains(self, chain_ids: list[str]) -> "Mmcif":
+        selected = np.array(
+            [site.label_asym_id in chain_ids for site in self.atom_site],
+            dtype=np.bool_,
+        )
+        return self.filter(selected)
+
+    def filter(self, selected: NDArray[np.bool_]) -> "Mmcif":
+        if selected.shape != (len(self.atom_site),):
+            raise ValueError(
+                f"selected must have shape (len(atom_site),), got {selected.shape}"
+            )
+        new_sites = []
+        for i, a in enumerate(self.atom_site):
+            if not selected[i]:
+                continue
+
+            raw = {
+                "id": i + 1,
+                "type_symbol": a.type_symbol,
+                "group_PDB": a.group_PDB,
+                "label_atom_id": a.label_atom_id,
+                "label_alt_id": a.label_alt_id,
+                "label_comp_id": a.label_comp_id,
+                "label_asym_id": a.label_asym_id,
+                "label_seq_id": a.label_seq_id,
+                "auth_seq_id": a.auth_seq_id,
+                "auth_comp_id": a.auth_comp_id,
+                "auth_asym_id": a.auth_asym_id,
+                "pdbx_PDB_ins_code": a.pdbx_PDB_ins_code,
+                "pdbx_PDB_model_num": a.pdbx_PDB_model_num,
+                "Cartn_x": float(a.cartn[0]),
+                "Cartn_y": float(a.cartn[1]),
+                "Cartn_z": float(a.cartn[2]),
+                "occupancy": a.occupancy,
+            }
+            new_sites.append(AtomSite.model_validate(raw))
+        kept_asym_ids = set(s.label_asym_id for s in new_sites)
+        kept_atom_keys = set(
+            (s.label_asym_id, s.label_seq_id, s.label_atom_id)
+            for s in new_sites
+        )
+
+        new_struct_asym = {
+            aid: eid
+            for aid, eid in self.struct_asym.items()
+            if aid in kept_asym_ids
+        }
+        kept_entity_ids = frozenset(new_struct_asym.values())
+        new_entity = {
+            eid: ent
+            for eid, ent in self.entity.items()
+            if eid in kept_entity_ids
+        }
+
+        new_poly = {
+            aid: self.pdbx_poly_seq_scheme[aid]
+            for aid in self.pdbx_poly_seq_scheme
+            if aid in kept_asym_ids
+        }
+        new_branch = {
+            aid: self.pdbx_branch_scheme[aid]
+            for aid in self.pdbx_branch_scheme
+            if aid in kept_asym_ids
+        }
+        new_nonpoly = {
+            aid: self.pdbx_nonpoly_scheme[aid]
+            for aid in self.pdbx_nonpoly_scheme
+            if aid in kept_asym_ids
+        }
+
+        def conn_partner_in_kept(ptnr: StructConnPartner) -> bool:
+            return (
+                ptnr.label_asym_id in kept_asym_ids
+                and (ptnr.label_asym_id, ptnr.label_seq_id, ptnr.label_atom_id)
+                in kept_atom_keys
+            )
+
+        new_conn = [
+            c
+            for c in self.struct_conn
+            if conn_partner_in_kept(c.ptnr1) and conn_partner_in_kept(c.ptnr2)
+        ]
+        kept_conn_type_ids = frozenset(c.conn_type_id for c in new_conn)
+        new_conn_type = {
+            cid: ct
+            for cid, ct in self.struct_conn_type.items()
+            if cid in kept_conn_type_ids
+        }
+
+        new_assemblies = []
+        for ba in self.pdbx_struct_assembly:
+            new_gens = _filter_assembly_gens(ba.assembly_gens, kept_asym_ids)
+            if not new_gens:
+                continue
+            new_assemblies.append(
+                BioAssembly(
+                    id=ba.id,
+                    details=ba.details,
+                    oligomeric_details=ba.oligomeric_details,
+                    oligomeric_count=ba.oligomeric_count,
+                    assembly_gens=new_gens,
+                )
+            )
+
+        new_branch_link = {
+            eid: links
+            for eid, links in self.pdbx_entity_branch_link.items()
+            if eid in kept_entity_ids
+        }
+
+        return Mmcif.model_construct(
+            entry_id=self.entry_id,
+            exptl_method=self.exptl_method,
+            pdbx_keywords=self.pdbx_keywords,
+            revision_date=self.revision_date,
+            resolution=self.resolution,
+            entity=new_entity,
+            pdbx_poly_seq_scheme=new_poly,
+            pdbx_branch_scheme=new_branch,
+            pdbx_nonpoly_scheme=new_nonpoly,
+            atom_site=new_sites,
+            pdbx_struct_assembly=new_assemblies,
+            pdbx_struct_oper_list=self.pdbx_struct_oper_list,
+            struct_asym=new_struct_asym,
+            struct_conn=new_conn,
+            struct_conn_type=new_conn_type,
+            pdbx_entity_branch_link=new_branch_link,
+        )
+
+    def to_mmcif(self) -> str:
+        parts = [f"data_{self.entry_id}"]
+
+        parts.append(
+            mmcif_write_block(
+                "entry",
+                ["id"],
+                [(self.entry_id,)],
+            )
+        )
+        parts.append(
+            mmcif_write_block(
+                "exptl",
+                ["method"],
+                [(self.exptl_method,)],
+            )
+        )
+        parts.append(
+            mmcif_write_block(
+                "struct_keywords",
+                ["pdbx_keywords"],
+                [(self.pdbx_keywords,)],
+            )
+        )
+        parts.append(
+            mmcif_write_block(
+                "pdbx_audit_revision_history",
+                ["ordinal", "revision_date"],
+                [(1, self.revision_date.isoformat())],
+            )
+        )
+
+        parts.append(
+            mmcif_write_block(
+                "refine",
+                ["ls_d_res_high"],
+                [(f"{self.resolution:.2f}",)],
+            )
+        )
+
+        if self.entity:
+            parts.append(
+                mmcif_write_block(
+                    "entity",
+                    ["id", "type", "pdbx_description"],
+                    [
+                        (e.id, e.type, e.pdbx_description)
+                        for e in self.entity.values()
+                    ],
+                )
+            )
+
+        if self.struct_asym:
+            parts.append(
+                mmcif_write_block(
+                    "struct_asym",
+                    ["id", "entity_id"],
+                    [(aid, eid) for aid, eid in self.struct_asym.items()],
+                )
+            )
+
+        def _site_row(s: AtomSite):
+            return (
+                s.id,
+                s.type_symbol,
+                s.group_PDB,
+                s.label_atom_id,
+                s.label_alt_id or ".",
+                s.label_comp_id,
+                s.label_asym_id,
+                s.label_seq_id if s.label_seq_id is not None else ".",
+                s.auth_seq_id,
+                s.auth_comp_id,
+                s.auth_asym_id,
+                s.pdbx_PDB_ins_code or ".",
+                s.pdbx_PDB_model_num,
+                f"{s.cartn[0]:.3f}",
+                f"{s.cartn[1]:.3f}",
+                f"{s.cartn[2]:.3f}",
+                f"{s.occupancy:.2f}",
+            )
+
+        parts.append(
+            mmcif_write_block(
+                "atom_site",
+                [
+                    "id",
+                    "type_symbol",
+                    "group_PDB",
+                    "label_atom_id",
+                    "label_alt_id",
+                    "label_comp_id",
+                    "label_asym_id",
+                    "label_seq_id",
+                    "auth_seq_id",
+                    "auth_comp_id",
+                    "auth_asym_id",
+                    "pdbx_PDB_ins_code",
+                    "pdbx_PDB_model_num",
+                    "Cartn_x",
+                    "Cartn_y",
+                    "Cartn_z",
+                    "occupancy",
+                ],
+                [_site_row(s) for s in self.atom_site],
+            )
+        )
+
+        def _scheme_row(s: Scheme):
+            return (
+                s.asym_id,
+                s.entity_id,
+                s.mon_id,
+                s.seq_id,
+                s.pdb_seq_num if s.pdb_seq_num is not None else ".",
+                s.pdb_ins_code or ".",
+            )
+
+        def _scheme_fields(seq_key: str) -> list[str]:
+            return [
+                "asym_id",
+                "entity_id",
+                "mon_id",
+                seq_key,
+                "pdb_seq_num",
+                "pdb_ins_code",
+            ]
+
+        if self.pdbx_poly_seq_scheme:
+            rows = [
+                _scheme_row(s)
+                for aid in self.pdbx_poly_seq_scheme
+                for s in self.pdbx_poly_seq_scheme[aid]
+            ]
+            parts.append(
+                mmcif_write_block(
+                    "pdbx_poly_seq_scheme",
+                    _scheme_fields("seq_id"),
+                    rows,
+                )
+            )
+        if self.pdbx_branch_scheme:
+            rows = [
+                _scheme_row(s)
+                for aid in self.pdbx_branch_scheme
+                for s in self.pdbx_branch_scheme[aid]
+            ]
+            parts.append(
+                mmcif_write_block(
+                    "pdbx_branch_scheme",
+                    _scheme_fields("num"),
+                    rows,
+                )
+            )
+        if self.pdbx_nonpoly_scheme:
+            rows = [
+                _scheme_row(s)
+                for aid in self.pdbx_nonpoly_scheme
+                for s in self.pdbx_nonpoly_scheme[aid]
+            ]
+            parts.append(
+                mmcif_write_block(
+                    "pdbx_nonpoly_scheme",
+                    _scheme_fields("ndb_seq_num"),
+                    rows,
+                )
+            )
+
+        if self.pdbx_struct_assembly:
+            parts.append(
+                mmcif_write_block(
+                    "pdbx_struct_assembly",
+                    [
+                        "id",
+                        "details",
+                        "oligomeric_details",
+                        "oligomeric_count",
+                    ],
+                    [
+                        (
+                            ba.id,
+                            ba.details,
+                            ba.oligomeric_details,
+                            ba.oligomeric_count,
+                        )
+                        for ba in self.pdbx_struct_assembly
+                    ],
+                )
+            )
+            gen_rows = []
+            for ba in self.pdbx_struct_assembly:
+                for g in ba.assembly_gens:
+                    if len(g.operations) == 1:
+                        oper_expr = ",".join(g.operations[0])
+                    else:
+                        oper_expr = "".join(
+                            "(" + ",".join(ops) + ")" for ops in g.operations
+                        )
+                    gen_rows.append(
+                        (ba.id, ",".join(g.asym_id_list), oper_expr)
+                    )
+            if gen_rows:
+                parts.append(
+                    mmcif_write_block(
+                        "pdbx_struct_assembly_gen",
+                        ["assembly_id", "asym_id_list", "oper_expression"],
+                        gen_rows,
+                    )
+                )
+
+        if self.pdbx_struct_oper_list:
+            op_rows = []
+            for op_id, op in self.pdbx_struct_oper_list.items():
+                row = [
+                    op_id,
+                    op.type,
+                    op.name or ".",
+                    op.symmetry_operation or ".",
+                ]
+                for i in range(1, 4):
+                    for j in range(1, 4):
+                        row.append(f"{op.matrix[i - 1, j - 1]:.5f}")
+                for i in range(1, 4):
+                    row.append(f"{op.vector[i - 1]:.5f}")
+                op_rows.append(tuple(row))
+            parts.append(
+                mmcif_write_block(
+                    "pdbx_struct_oper_list",
+                    [
+                        "id",
+                        "type",
+                        "name",
+                        "symmetry_operation",
+                        "matrix[1][1]",
+                        "matrix[1][2]",
+                        "matrix[1][3]",
+                        "matrix[2][1]",
+                        "matrix[2][2]",
+                        "matrix[2][3]",
+                        "matrix[3][1]",
+                        "matrix[3][2]",
+                        "matrix[3][3]",
+                        "vector[1]",
+                        "vector[2]",
+                        "vector[3]",
+                    ],
+                    op_rows,
+                )
+            )
+
+        if self.struct_conn:
+            leaving_str = {0: "none", 1: "one", 2: "both"}
+            conn_rows: list[tuple[str | int, ...]] = []
+            for c in self.struct_conn:
+                p1, p2 = c.ptnr1, c.ptnr2
+                dist_str = (
+                    f"{c.pdbx_dist_value:.3f}"
+                    if c.pdbx_dist_value is not None
+                    else "."
+                )
+                conn_row: tuple[str | int, ...] = (
+                    c.id,
+                    c.conn_type_id,
+                    leaving_str.get(c.pdbx_leaving_atom_flag, "none"),
+                    dist_str,
+                    p1.label_atom_id,
+                    p1.label_comp_id,
+                    p1.label_asym_id,
+                    p1.label_seq_id if p1.label_seq_id is not None else ".",
+                    p1.auth_seq_id,
+                    p1.auth_comp_id,
+                    p1.auth_asym_id,
+                    p1.pdbx_PDB_ins_code or ".",
+                    p1.symmetry,
+                    p2.label_atom_id,
+                    p2.label_comp_id,
+                    p2.label_asym_id,
+                    p2.label_seq_id if p2.label_seq_id is not None else ".",
+                    p2.auth_seq_id,
+                    p2.auth_comp_id,
+                    p2.auth_asym_id,
+                    p2.pdbx_PDB_ins_code or ".",
+                    p2.symmetry,
+                )
+                conn_rows.append(conn_row)
+            parts.append(
+                mmcif_write_block(
+                    "struct_conn",
+                    [
+                        "id",
+                        "conn_type_id",
+                        "pdbx_leaving_atom_flag",
+                        "pdbx_dist_value",
+                        "ptnr1_label_atom_id",
+                        "ptnr1_label_comp_id",
+                        "ptnr1_label_asym_id",
+                        "ptnr1_label_seq_id",
+                        "ptnr1_auth_seq_id",
+                        "ptnr1_auth_comp_id",
+                        "ptnr1_auth_asym_id",
+                        "pdbx_ptnr1_PDB_ins_code",
+                        "ptnr1_symmetry",
+                        "ptnr2_label_atom_id",
+                        "ptnr2_label_comp_id",
+                        "ptnr2_label_asym_id",
+                        "ptnr2_label_seq_id",
+                        "ptnr2_auth_seq_id",
+                        "ptnr2_auth_comp_id",
+                        "ptnr2_auth_asym_id",
+                        "pdbx_ptnr2_PDB_ins_code",
+                        "ptnr2_symmetry",
+                    ],
+                    conn_rows,
+                )
+            )
+
+        if self.struct_conn_type:
+            parts.append(
+                mmcif_write_block(
+                    "struct_conn_type",
+                    ["id", "criteria", "reference"],
+                    [
+                        (
+                            cid,
+                            ct.criteria or ".",
+                            ct.reference or ".",
+                        )
+                        for cid, ct in self.struct_conn_type.items()
+                    ],
+                )
+            )
+
+        if self.pdbx_entity_branch_link:
+            bl_rows = []
+            for entity_id, links in self.pdbx_entity_branch_link.items():
+                for bl in links:
+                    bl_rows.append(
+                        (
+                            entity_id,
+                            bl.ptnr1.entity_branch_list_num,
+                            bl.ptnr1.comp_id,
+                            bl.ptnr1.atom_id,
+                            bl.ptnr1.leaving_atom_id,
+                            bl.ptnr2.entity_branch_list_num,
+                            bl.ptnr2.comp_id,
+                            bl.ptnr2.atom_id,
+                            bl.ptnr2.leaving_atom_id,
+                            mmcif_bond_order(bl.value_order),
+                        )
+                    )
+            parts.append(
+                mmcif_write_block(
+                    "pdbx_entity_branch_link",
+                    [
+                        "entity_id",
+                        "entity_branch_list_num_1",
+                        "comp_id_1",
+                        "atom_id_1",
+                        "leaving_atom_id_1",
+                        "entity_branch_list_num_2",
+                        "comp_id_2",
+                        "atom_id_2",
+                        "leaving_atom_id_2",
+                        "value_order",
+                    ],
+                    bl_rows,
+                )
+            )
+
+        return "\n".join(parts)
 
 
 def load_mmcif_single(file: Path):
