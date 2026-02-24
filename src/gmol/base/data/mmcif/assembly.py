@@ -5,6 +5,7 @@ from collections.abc import Iterable
 from copy import deepcopy
 from dataclasses import dataclass, field
 from functools import cached_property
+from pathlib import Path
 from string import ascii_lowercase, ascii_uppercase, digits
 from typing import ClassVar, Protocol
 
@@ -535,6 +536,229 @@ class Assembly:
         )
 
         return cls(coords, atoms, residues, chains, entities, connections)
+
+    @classmethod
+    def from_mmcif(cls, cif_file: Path) -> "Assembly":
+        """Load an Assembly from a mmcif file (e.g., written by to_mmcif).
+
+        Args:
+            cif_file: Path to the mmcif file.
+
+        Returns:
+            Reconstructed Assembly object.
+        """
+        from nuri.fmt import cif_ddl2_frame_as_dict, read_cif
+
+        data = next(read_cif(cif_file)).data
+        mmcif_dict = cif_ddl2_frame_as_dict(data)
+
+        # Build CCD from embedded chem_comp data
+        chem_comps_raw: dict[str, dict] = {
+            cc["id"]: cc for cc in mmcif_dict.get("chem_comp", [])
+        }
+        for cc in chem_comps_raw.values():
+            cc["atoms"] = []
+            cc["bonds"] = []
+            cc.setdefault("name", cc["id"])
+            cc.setdefault("formula", None)
+            cc.setdefault("formula_weight", None)
+
+        for atom_data in mmcif_dict.get("chem_comp_atom", []):
+            chem_comps_raw[atom_data["comp_id"]]["atoms"].append(atom_data)
+        for bond_data in mmcif_dict.get("chem_comp_bond", []):
+            chem_comps_raw[bond_data["comp_id"]]["bonds"].append(bond_data)
+
+        ccd: dict[str, ChemComp] = {
+            name: ChemComp.model_validate(cc)
+            for name, cc in chem_comps_raw.items()
+        }
+
+        # Build entities
+        entities: dict[int, Entity] = {
+            int(e["id"]): Entity.model_validate(e)
+            for e in mmcif_dict.get("entity", [])
+        }
+
+        # Build struct_asym mapping (chain_id -> entity_id)
+        struct_asym: dict[str, int] = {
+            sa["id"]: int(sa["entity_id"])
+            for sa in mmcif_dict.get("struct_asym", [])
+        }
+
+        # Parse atom_site data directly (the written format may lack
+        # some AtomSite-required fields like group_PDB, occupancy, etc.)
+        raw_atoms = [
+            a
+            for a in mmcif_dict.get("atom_site", [])
+            if a["label_comp_id"] in ccd
+        ]
+
+        if raw_atoms:
+            coords = np.array(
+                [
+                    [
+                        float(a["Cartn_x"]),
+                        float(a["Cartn_y"]),
+                        float(a["Cartn_z"]),
+                    ]
+                    for a in raw_atoms
+                ],
+                dtype=np.float64,
+            )
+        else:
+            coords = np.empty((0, 3), dtype=np.float64)
+
+        atoms: list[AssemblyAtom] = [
+            AssemblyAtom(
+                atom_idx=i,
+                residue_id=ResidueId(
+                    chain_id=a["label_asym_id"],
+                    seq_id=int(a["auth_seq_id"]),
+                    ins_code=a.get("pdbx_PDB_ins_code") or "",
+                ),
+                type_symbol=a["type_symbol"],
+                atom_id=a["label_atom_id"],
+                comp_id=a["label_comp_id"],
+            )
+            for i, a in enumerate(raw_atoms)
+        ]
+
+        # Build schemes
+        poly_seq_scheme: dict[str, list[Scheme]] = defaultdict(list)
+        for s in mmcif_dict.get("pdbx_poly_seq_scheme", []):
+            scheme = Scheme.model_validate(s)
+            poly_seq_scheme[scheme.asym_id].append(scheme)
+
+        branch_scheme: dict[str, list[Scheme]] = defaultdict(list)
+        for s in mmcif_dict.get("pdbx_branch_scheme", []):
+            scheme = Scheme.model_validate(s)
+            branch_scheme[scheme.asym_id].append(scheme)
+
+        nonpoly_scheme: dict[str, list[Scheme]] = defaultdict(list)
+        for s in mmcif_dict.get("pdbx_nonpoly_scheme", []):
+            scheme = Scheme.model_validate(s)
+            nonpoly_scheme[scheme.asym_id].append(scheme)
+
+        # Determine chain types
+        chain_types: dict[str, MolType] = {}
+        for chain_id, seq_infos in poly_seq_scheme.items():
+            chain_types[chain_id] = polymer_mol_type(seq_infos, ccd)
+        for chain_id in branch_scheme:
+            chain_types[chain_id] = MolType.Ligand
+        for chain_id in nonpoly_scheme:
+            chain_types[chain_id] = MolType.Ligand
+
+        # Fallback for chains with no scheme data
+        for chain_id in struct_asym:
+            if chain_id not in chain_types:
+                for atom in atoms:
+                    if atom.chain_id == chain_id and atom.comp_id in ccd:
+                        chain_types[chain_id] = residue_mol_type(
+                            ccd[atom.comp_id]
+                        )
+                        break
+                else:
+                    chain_types[chain_id] = MolType.Ligand
+
+        # Build residues and chains from atoms
+        residues: dict[ResidueId, Residue] = {}
+        chains: dict[str, Chain] = {}
+
+        for atom in atoms:
+            chain = chains.setdefault(
+                atom.chain_id,
+                Chain(
+                    atom.chain_id,
+                    struct_asym[atom.chain_id],
+                    chain_types[atom.chain_id],
+                ),
+            )
+
+            if (residue := residues.get(atom.residue_id)) is None:
+                residue = residues[atom.residue_id] = Residue(
+                    atom.residue_id, ccd[atom.comp_id]
+                )
+                chain.residue_ids.append(residue.residue_id)
+
+            chain.atom_idxs.append(atom.atom_idx)
+            residue.atom_idxs.append(atom.atom_idx)
+
+        # Build branch links
+        branch_links: dict[int, list[BranchLink]] = defaultdict(list)
+        for bl in mmcif_dict.get("pdbx_entity_branch_link", []):
+            link = BranchLink.model_validate(bl)
+            branch_links[int(bl["entity_id"])].append(link)
+
+        # Set seqres and branches for each chain
+        for cid, chain in chains.items():
+            chain.seqres = _select_het_seq_scheme(
+                poly_seq_scheme.get(cid, [])
+                + branch_scheme.get(cid, [])
+                + nonpoly_scheme.get(cid, []),
+                residues,
+            )
+            chain.branches = _map_branches(
+                branch_scheme.get(cid, []),
+                branch_links.get(chain.entity_id, []),
+                residues,
+            )
+            chain.sync_mappings()
+
+        # Build connections from struct_conn data
+        _leaving_map = {"none": 0, "one": 1, "both": 2}
+        connections: list[AssemblyConnection] = []
+
+        for sc in mmcif_dict.get("struct_conn", []):
+            ptnr1_res_id = ResidueId(
+                chain_id=sc["ptnr1_label_asym_id"],
+                seq_id=int(sc["ptnr1_auth_seq_id"]),
+                ins_code=sc.get("pdbx_ptnr1_PDB_ins_code") or "",
+            )
+            ptnr2_res_id = ResidueId(
+                chain_id=sc["ptnr2_label_asym_id"],
+                seq_id=int(sc["ptnr2_auth_seq_id"]),
+                ins_code=sc.get("pdbx_ptnr2_PDB_ins_code") or "",
+            )
+
+            ptnr1_residue = residues.get(ptnr1_res_id)
+            ptnr2_residue = residues.get(ptnr2_res_id)
+            if ptnr1_residue is None or ptnr2_residue is None:
+                continue
+
+            src_idx = None
+            for aidx in ptnr1_residue.atom_idxs:
+                if atoms[aidx].atom_id == sc["ptnr1_label_atom_id"]:
+                    src_idx = aidx
+                    break
+
+            dst_idx = None
+            for aidx in ptnr2_residue.atom_idxs:
+                if atoms[aidx].atom_id == sc["ptnr2_label_atom_id"]:
+                    dst_idx = aidx
+                    break
+
+            if src_idx is None or dst_idx is None:
+                continue
+
+            connections.append(
+                AssemblyConnection(
+                    src_idx=src_idx,
+                    dst_idx=dst_idx,
+                    conn_type=sc["conn_type_id"].lower(),
+                    leaving_atom_count=_leaving_map.get(
+                        sc["pdbx_leaving_atom_flag"], 0
+                    ),
+                )
+            )
+
+        return cls(
+            coords,
+            atoms,
+            residues,
+            chains,
+            entities,
+            connections,
+        )
 
     def to_mmcif(self, name: str, write_schemes: bool = True) -> str:
         merged_branches: dict[int, set[Branch]] = defaultdict(set)
