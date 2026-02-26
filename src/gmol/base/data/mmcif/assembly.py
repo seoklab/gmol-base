@@ -17,6 +17,7 @@ from gmol.base.const import (
     modres,
     rna_restype_3to1,
 )
+from gmol.base.types import LooseModel
 from .parse import (
     AtomSite,
     BioAssembly,
@@ -25,6 +26,7 @@ from .parse import (
     ChemComp,
     Entity,
     Mmcif,
+    PdbMetadata,
     Scheme,
     StructConn,
     SymOp,
@@ -365,27 +367,14 @@ class _PdbAtom:
         )
 
 
-class Assembly:
-    def __init__(
-        self,
-        coords: NDArray[np.float64],
-        atoms: list[AssemblyAtom],
-        residues: dict[ResidueId, Residue],
-        chains: dict[str, Chain],
-        entities: dict[int, Entity],
-        connections: list[AssemblyConnection],
-        metadata: Mmcif,
-    ):
-        self.coords = coords
-
-        self.atoms = atoms
-        self.connections = connections
-
-        self.residues = residues
-        self.chains = chains
-        self.entities = entities
-
-        self.metadata = metadata
+class Assembly(LooseModel):
+    metadata: PdbMetadata
+    coords: NDArray[np.float64]
+    atoms: list[AssemblyAtom]
+    residues: dict[ResidueId, Residue]
+    chains: dict[str, Chain]
+    entities: dict[int, Entity]
+    connections: list[AssemblyConnection]
 
     @cached_property
     def comp_ids(self) -> NDArray[np.str_]:
@@ -427,11 +416,9 @@ class Assembly:
 
         coords = self.coords[selected]
 
-        atoms: list[AssemblyAtom] = [
+        atoms = [
             atom.new_atom(i)
-            for i, atom in enumerate(
-                np.array(self.atoms, dtype=object)[selected]
-            )
+            for i, atom in enumerate(itertools.compress(self.atoms, selected))
         ]
 
         residues: dict[ResidueId, Residue] = {}
@@ -472,13 +459,13 @@ class Assembly:
         entities = {eid: self.entities[eid] for eid in eids}
 
         return Assembly(
-            coords,
-            atoms,
-            residues,
-            chains,
-            entities,
-            connections,
-            self.metadata,
+            metadata=self.metadata,
+            coords=coords,
+            atoms=atoms,
+            residues=residues,
+            chains=chains,
+            entities=entities,
+            connections=connections,
         )
 
     def filter_chains(self, chain_ids: list[str]):
@@ -489,15 +476,7 @@ class Assembly:
         return self.filter(selected)
 
     def transform(self, xform: Transformation) -> "Assembly":
-        return Assembly(
-            xform @ self.coords,
-            self.atoms,
-            self.residues,
-            self.chains,
-            self.entities,
-            self.connections,
-            self.metadata,
-        )
+        return self.model_copy(update={"coords": xform @ self.coords})
 
     def apply(self, operations: list[Transformation]) -> "Assembly":
         return Assembly.join([self.transform(op) for op in operations])
@@ -545,13 +524,13 @@ class Assembly:
         )
 
         return cls(
-            coords,
-            atoms,
-            residues,
-            chains,
-            entities,
-            connections,
-            assemblies[0].metadata,
+            metadata=assemblies[0].metadata,
+            coords=coords,
+            atoms=atoms,
+            residues=residues,
+            chains=chains,
+            entities=entities,
+            connections=connections,
         )
 
     def to_mmcif(self, name: str, write_schemes: bool = True) -> str:
@@ -620,56 +599,6 @@ class Assembly:
                 ["ls_d_res_high"],
                 [(f"{m.resolution:.2f}",)],
             )
-        )
-
-        mmcif_content += mmcif_write_block(
-            "pdbx_struct_assembly",
-            ["id", "details", "oligomeric_details", "oligomeric_count"],
-            [(1, "author_and_software_defined_assembly", "monomeric", 1)],
-        )
-
-        # For pdbx_struct_oper_list, use identity placeholder
-        _oper_list_fields = [
-            "id",
-            "type",
-            "name",
-            "symmetry_operation",
-            "matrix[1][1]",
-            "matrix[1][2]",
-            "matrix[1][3]",
-            "matrix[2][1]",
-            "matrix[2][2]",
-            "matrix[2][3]",
-            "matrix[3][1]",
-            "matrix[3][2]",
-            "matrix[3][3]",
-            "vector[1]",
-            "vector[2]",
-            "vector[3]",
-        ]
-        mmcif_content += mmcif_write_block(
-            "pdbx_struct_oper_list",
-            _oper_list_fields,
-            [
-                (
-                    "1",
-                    "identity operation",
-                    "1",
-                    "x,y,z",
-                    "1.0",
-                    "0.0",
-                    "0.0",
-                    "0.0",
-                    "1.0",
-                    "0.0",
-                    "0.0",
-                    "0.0",
-                    "1.0",
-                    "0.0",
-                    "0.0",
-                    "0.0",
-                )
-            ],
         )
 
         mmcif_content += (
@@ -814,7 +743,7 @@ class Assembly:
                 ],
                 [
                     (
-                        str(i + 1),
+                        str(i),
                         conn.conn_type,
                         {0: "none", 1: "one", 2: "both"}[
                             conn.leaving_atom_count
@@ -839,7 +768,7 @@ class Assembly:
                         ptnr2.residue_id.ins_code or ".",
                         "1_555",  # identity placeholder
                     )
-                    for i, conn in enumerate(self.connections)
+                    for i, conn in enumerate(self.connections, start=1)
                 ],
             )
             + mmcif_write_block(
@@ -1660,13 +1589,13 @@ def _model_assembly(
     ]
 
     return Assembly(
-        coords,
-        atoms,
-        residues,
-        chains,
-        metadata.entity.copy(),
-        connections,
-        metadata,
+        metadata=metadata.metadata(),
+        coords=coords,
+        atoms=atoms,
+        residues=residues,
+        chains=chains,
+        entities=metadata.entity.copy(),
+        connections=connections,
     )
 
 
