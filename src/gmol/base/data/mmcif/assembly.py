@@ -3,13 +3,21 @@ import itertools
 from collections import defaultdict
 from collections.abc import Iterable
 from copy import deepcopy
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, fields
 from functools import cached_property
 from string import ascii_lowercase, ascii_uppercase, digits
 from typing import ClassVar, Protocol
 
 import numpy as np
 from numpy.typing import NDArray
+from pydantic import (
+    SerializerFunctionWrapHandler,
+    TypeAdapter,
+    field_serializer,
+    field_validator,
+    model_serializer,
+    model_validator,
+)
 
 from gmol.base.const import (
     aa_restype_3to1,
@@ -385,6 +393,61 @@ class Assembly(LooseModel):
         return {
             res.chem_comp.id: res.chem_comp for res in self.residues.values()
         }
+
+    @field_serializer("coords", mode="plain")
+    @staticmethod
+    def _serialize_coords(coords: NDArray[np.float64]):
+        return coords.tolist()
+
+    @field_validator("coords", mode="before")
+    @staticmethod
+    def _validate_coords(data):
+        return np.array(data, dtype=np.float64)
+
+    @field_serializer("residues", mode="plain")
+    @staticmethod
+    def _serialize_residues(residues: dict[ResidueId, Residue]):
+        res = [
+            {
+                f.name: getattr(residue, f.name)
+                for f in fields(residue)
+                if f.name != "chem_comp"
+            }
+            | {"comp_id": residue.chem_comp.id}
+            for residue in residues.values()
+        ]
+        return res
+
+    @model_serializer(mode="wrap")
+    def _gather_chem_comps(self, handler: SerializerFunctionWrapHandler):
+        ccd = self.chem_comps
+        data = handler(self)
+        data["chem_comps"] = ccd
+        return data
+
+    @field_validator("residues", mode="before")
+    @staticmethod
+    def _validate_residues(residues):
+        if isinstance(residues, dict):
+            return residues
+
+        residues = {ResidueId(**res["residue_id"]): res for res in residues}
+        return residues
+
+    @model_validator(mode="before")
+    @staticmethod
+    def _scatter_chem_comps(data):
+        try:
+            ccd = data.pop("chem_comps")
+        except Exception:
+            return data
+
+        ccd = TypeAdapter(dict[str, ChemComp]).validate_python(ccd)
+
+        for res in data["residues"]:
+            res["chem_comp"] = ccd[res.pop("comp_id")]
+
+        return data
 
     def count_polymer_chains(self) -> int:
         return len(self.chains) - sum(
