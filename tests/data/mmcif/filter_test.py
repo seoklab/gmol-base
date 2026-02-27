@@ -1,14 +1,14 @@
 import numpy as np
 import pytest
 
-from gmol.base.data.mmcif import Assembly, ChemComp, Mmcif, filter_mmcif
+from gmol.base.data.mmcif import Assembly, ChemComp, filter_mmcif
 
 
 def test_filter_mmcif(
     ccd_components: dict[str, ChemComp],
-    sample_assembly: tuple[Mmcif, Assembly],
+    sample_assembly: Assembly,
 ):
-    result = filter_mmcif(*sample_assembly, ccd_components)
+    result = filter_mmcif(sample_assembly, ccd_components)
     if result is None:
         pytest.skip("target did not pass pre-filter")
 

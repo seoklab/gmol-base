@@ -22,4 +22,4 @@ def sample_assembly(test_data: Path, ccd_components: dict[str, ChemComp]):
     data = load_mmcif_single(mmcif)
     assemblies = mmcif_assemblies(data, ccd_components)
     assert len(assemblies) == 1
-    return data, assemblies[0]
+    return assemblies[0]
