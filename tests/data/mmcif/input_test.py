@@ -39,11 +39,11 @@ def _load_input(
     assert len(assemblies) == 1
 
     result = filter_mmcif(
-        data, assemblies[0], ccd, cutoff_date=dt.date(9999, 12, 31)
+        assemblies[0], ccd, cutoff_date=dt.date(9999, 12, 31)
     )
     assert result is not None
 
-    input_data = build_input(result, data, ccd, split_modified=split)
+    input_data = build_input(result, ccd, split_modified=split)
     return input_data
 
 

@@ -1,10 +1,8 @@
-from gmol.base.data.mmcif import Assembly, Mmcif
+from gmol.base.data.mmcif import Assembly
 
 
-def test_save_load(sample_assembly: tuple[Mmcif, Assembly]):
-    _, assembly = sample_assembly
-
-    j1 = assembly.model_dump_json(indent=2)
+def test_save_load(sample_assembly: Assembly):
+    j1 = sample_assembly.model_dump_json(indent=2)
     data = Assembly.model_validate_json(j1)
 
     j2 = data.model_dump_json(indent=2)
