@@ -40,6 +40,7 @@ import itertools
 import logging
 import math
 import os
+import shutil
 import subprocess as sp
 import typing
 from collections import Counter
@@ -47,7 +48,6 @@ from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import Literal
 
 from gmol.base.data.seq.colabfold_input import (
     MsaQuery,
@@ -397,8 +397,6 @@ class MMseqsCommonSearchParams:
             "0.1",
             "--max-seqs",
             "10000",
-            "--prefilter-mode",
-            str(self.prefilter_mode),
         ]
         if self.gpu:
             # gpu version only supports ungapped prefilter currently
@@ -622,7 +620,7 @@ def mmseqs_search_monomer(
             additional_search_param=p.search_param,
         )
         mmseqs.mvdb(base / "tmp/latest/profile_1", base / "prof_res")
-        mmseqs.lndb(base / f"{qdb.name}_h", base / "prof_res_h")
+        mmseqs.lndb(qdb.parent / f"{qdb.name}_h", base / "prof_res_h")
         mmseqs.expandaln(
             qdb,
             p.udb1,
@@ -790,7 +788,7 @@ def mmseqs_search_pair(
             additional_search_param=p.search_param,
         )
         mmseqs.mvdb(base / "tmp/latest/profile_1", base / "prof_res")
-        mmseqs.lndb(base / f"{qdb.name}_h", base / "prof_res_h")
+        mmseqs.lndb(qdb.parent / f"{qdb.name}_h", base / "prof_res_h")
         mmseqs.expandaln(
             qdb,
             p.udb1,
@@ -860,12 +858,10 @@ def run_search_from_path(
     output_dir: Path,
     threads: int = 1,
     mmseqs: str | Path = "mmseqs",
-    pair_mode: Literal[
-        "unpaired", "paired", "unpaired_paired"
-    ] = "unpaired_paired",
     *,
     monomer_params: MMseqsMonomerSearchParams,
     pair_params: MMseqsPairSearchParams,
+    env_pair_params: MMseqsPairSearchParams | None = None,
 ) -> None:
     """Run MSA search from a FASTA/CSV/dir path. Results written as output_dir/<jobname>.a3m.
 
@@ -882,40 +878,41 @@ def run_search_from_path(
 
     output_dir.mkdir(exist_ok=True, parents=True)
     query_fas = output_dir / "query.fas"
-    seqid = itertools.count(0)
     with query_fas.open("w") as f:
-        for q in queries_unique:
+        for i, q in enumerate(queries_unique, start=101):
             for seq in q.unique_seqs:
-                f.write(f">{101 + next(seqid)}\n{seq}\n")
+                f.write(f">{i}\n{seq}\n")
 
     runner = MMseqs(threads=threads, mmseqs=mmseqs)
     runner.createdb(query_fas, output_dir / "qdb", shuffle=0)
 
     with (output_dir / "qdb.lookup").open("w") as f:
-        seqid = 0
+        seqid = itertools.count(0)
         for fid, q in enumerate(queries_unique):
-            for seqid in range(seqid, seqid + len(q.unique_seqs)):  # noqa: B020
+            for _ in q.unique_seqs:
                 raw_first_id = q.id.split()[0]
-                f.write(f"{seqid}\t{raw_first_id}\t{fid}\n")
-            seqid += 1
+                f.write(f"{next(seqid)}\t{raw_first_id}\t{fid}\n")
 
-    is_complex = any(q.is_complex for q in queries)
-    run_monomer = not is_complex or pair_mode != "paired"
-    if run_monomer:
-        mmseqs_search_monomer(
+    mmseqs_search_monomer(
+        runner,
+        output_dir / "qdb",
+        output_dir,
+        monomer_params,
+    )
+
+    if any(q.is_complex for q in queries):
+        mmseqs_search_pair(
             runner,
             output_dir / "qdb",
             output_dir,
-            monomer_params,
+            pair_params,
         )
-
-    if is_complex:
-        if pair_mode != "unpaired":
+        if env_pair_params is not None:
             mmseqs_search_pair(
                 runner,
                 output_dir / "qdb",
                 output_dir,
-                pair_params,
+                env_pair_params,
             )
 
         # Merge per-job: read unpaired/paired a3m by index, msa_to_str, write job_index.a3m
@@ -923,34 +920,58 @@ def run_search_from_path(
         for q in queries_unique:
             unpaired_msa: list[str] = []
             paired_msa: list[str] = []
+            templates: list[Path] = []
             for _ in q.unique_seqs:
                 sid = next(seqid)
-                if pair_mode != "paired":
-                    a3m_path = output_dir / f"{sid}.a3m"
-                    if a3m_path.exists():
-                        unpaired_msa.append(a3m_path.read_text())
-                        a3m_path.unlink()
 
-                if pair_mode != "unpaired" and len(q.unique_seqs) > 1:
+                a3m_path = output_dir / f"{sid}.a3m"
+                unpaired_msa.append(a3m_path.read_text())
+                a3m_path.unlink()
+
+                if monomer_params.template_db is not None:
+                    templates.append(output_dir / f"{sid}.m8")
+
+                if len(q.unique_seqs) > 1:
+                    if env_pair_params is not None:
+                        env_paired_path = (
+                            output_dir
+                            / f"{sid}{env_pair_params.unpack_suffix}"
+                        )
+                        with (
+                            open(env_paired_path) as fin,
+                            open(
+                                output_dir
+                                / f"{sid}{pair_params.unpack_suffix}",
+                                "a",
+                            ) as fout,
+                        ):
+                            shutil.copyfileobj(fin, fout)
+                        env_paired_path.unlink()
+
                     paired_path = (
-                        output_dir / f"{seqid}{pair_params.unpack_suffix}"
+                        output_dir / f"{sid}{pair_params.unpack_suffix}"
                     )
-                    if paired_path.exists():
-                        paired_msa.append(paired_path.read_text())
-                        paired_path.unlink()
+                    paired_msa.append(paired_path.read_text())
+                    paired_path.unlink()
 
-            out_unpaired = None if pair_mode == "paired" else unpaired_msa
-            out_paired = (
-                None
-                if pair_mode == "unpaired" or len(q.unique_seqs) <= 1
-                else paired_msa
-            )
             msa = msa_to_str(
-                out_unpaired, out_paired, q.unique_seqs, q.seq_counts
+                unpaired_msa,
+                paired_msa if len(q.unique_seqs) > 1 else None,
+                q.unique_seqs,
+                q.seq_counts,
             )
             (output_dir / f"{safe_filename(q.id)}.a3m").write_text(msa)
 
+            if templates:
+                tdb = typing.cast(Path, monomer_params.template_db)
+                with (
+                    output_dir / f"{safe_filename(q.id)}_{tdb.stem}.m8"
+                ).open("w") as fout:
+                    for t in templates:
+                        with t.open() as fin:
+                            shutil.copyfileobj(fin, fout)
+                        t.unlink()
+
     runner.rmdb(output_dir / "qdb")
-    if (output_dir / "qdb_h.dbtype").exists():
-        runner.rmdb(output_dir / "qdb_h")
+    runner.rmdb(output_dir / "qdb_h")
     query_fas.unlink(missing_ok=True)
