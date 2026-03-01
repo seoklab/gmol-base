@@ -869,7 +869,7 @@ def run_search_from_path(
     DB paths are under dbbase if not absolute. For complex (multi-chain) input,
     runs monomer unpaired + optional paired search and merges per job.
     """
-    queries = get_queries(query)
+    queries = get_queries(query, None)
     if not queries:
         raise ValueError(f"No queries found in {query}")
 
