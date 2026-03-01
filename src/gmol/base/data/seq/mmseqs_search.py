@@ -36,7 +36,6 @@ See:
         SOFTWARE.
 """
 
-import itertools
 import logging
 import math
 import os
@@ -879,6 +878,16 @@ def run_search_from_path(
         MMseqsQuery.from_msa_query(q) for q in queries
     ]
 
+    # One global (qid, chain_idx) -> sid mapping for query.fas, merge, and template
+    sid_by_query: list[list[int]] = []
+    sid = 0
+    for q in queries_unique:
+        sids = []
+        for _ in q.unique_seqs:
+            sids.append(sid)
+            sid += 1
+        sid_by_query.append(sids)
+
     output_dir.mkdir(exist_ok=True, parents=True)
     query_fas = output_dir / "query.fas"
     with query_fas.open("w") as f:
@@ -890,11 +899,10 @@ def run_search_from_path(
     runner.createdb(query_fas, output_dir / "qdb", shuffle=0)
 
     with (output_dir / "qdb.lookup").open("w") as f:
-        seqid = itertools.count(0)
         for fid, q in enumerate(queries_unique):
-            for _ in q.unique_seqs:
-                raw_first_id = q.id.split()[0]
-                f.write(f"{next(seqid)}\t{raw_first_id}\t{fid}\n")
+            raw_first_id = q.id.split()[0]
+            for sid_val in sid_by_query[fid]:
+                f.write(f"{sid_val}\t{raw_first_id}\t{fid}\n")
 
     mmseqs_search_monomer(
         runner,
@@ -920,22 +928,19 @@ def run_search_from_path(
                 ".env.paired.a3m",
             )
 
-        # Merge per-job: read unpaired/paired a3m by index, msa_to_str, write job_index.a3m
-        seqid = itertools.count(0)
+        # Merge per-job: read unpaired/paired a3m by sid, msa_to_str, write qid.a3m
         for qid, q in enumerate(queries_unique):
             unpaired_msa: list[str] = []
             paired_msa: list[str] = []
             heteromer = len(q.unique_seqs) > 1
-            for _ in q.unique_seqs:
-                sid = next(seqid)
-
-                a3m_path = output_dir / f"{sid}.a3m"
+            for sid_val in sid_by_query[qid]:
+                a3m_path = output_dir / f"{sid_val}.a3m"
                 unpaired_msa.append(a3m_path.read_text())
                 a3m_path.unlink()
 
-                paired_path = output_dir / f"{sid}.paired.a3m"
+                paired_path = output_dir / f"{sid_val}.paired.a3m"
                 if env_pair_params is not None:
-                    env_paired_path = output_dir / f"{sid}.env.paired.a3m"
+                    env_paired_path = output_dir / f"{sid_val}.env.paired.a3m"
                     if heteromer:
                         with (
                             open(env_paired_path) as fin,
@@ -955,22 +960,22 @@ def run_search_from_path(
             )
             (output_dir / f"{qid}.a3m").write_text(msa)
 
-    seqid = itertools.count(0)
+    has_complex = any(q.is_complex for q in queries)
     for qid, q in enumerate(queries_unique):
         out_key = safe_filename(q.id)
 
-        output_dir.joinpath(f"{qid}.a3m").rename(output_dir / f"{out_key}.a3m")
+        if has_complex:
+            src_a3m = output_dir / f"{qid}.a3m"
+        else:
+            src_a3m = output_dir / f"{sid_by_query[qid][0]}.a3m"
+        src_a3m.rename(output_dir / f"{out_key}.a3m")
 
         if monomer_params.template_db is not None:
-            templates: list[Path] = []
-            for _ in q.unique_seqs:
-                sid = next(seqid)
-                templates.append(output_dir / f"{sid}.m8")
-
             with (
                 output_dir / f"{out_key}_{monomer_params.template_db.stem}.m8"
             ).open("w") as fout:
-                for t in templates:
+                for sid_val in sid_by_query[qid]:
+                    t = output_dir / f"{sid_val}.m8"
                     with t.open() as fin:
                         shutil.copyfileobj(fin, fout)
                     t.unlink()
