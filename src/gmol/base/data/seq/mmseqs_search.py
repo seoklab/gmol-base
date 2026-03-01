@@ -542,7 +542,6 @@ class MMseqsPairSearchParams(MMseqsCommonSearchParams):
     search_db: Path
 
     pairing_strategy: int = 0
-    unpack_suffix: str = ".paired.a3m"
 
     suffix1: str = field(init=False)
     suffix2: str = field(init=False)
@@ -775,6 +774,7 @@ def mmseqs_search_pair(
     qdb: Path,
     output_dir: Path,
     params: MMseqsPairSearchParams,
+    unpack_suffix: str,
 ) -> None:
     p = params
 
@@ -850,7 +850,7 @@ def mmseqs_search_pair(
         mmseqs.unpackdb(
             base / "pair.a3m",
             output_dir,
-            unpack_suffix=p.unpack_suffix,
+            unpack_suffix=unpack_suffix,
         )
 
 
@@ -907,6 +907,7 @@ def run_search_from_path(
             output_dir / "qdb",
             output_dir,
             pair_params,
+            ".paired.a3m",
         )
         if env_pair_params is not None:
             mmseqs_search_pair(
@@ -914,6 +915,7 @@ def run_search_from_path(
                 output_dir / "qdb",
                 output_dir,
                 env_pair_params,
+                ".env.paired.a3m",
             )
 
         # Merge per-job: read unpaired/paired a3m by index, msa_to_str, write job_index.a3m
@@ -930,24 +932,18 @@ def run_search_from_path(
 
                 if len(q.unique_seqs) > 1:
                     if env_pair_params is not None:
-                        env_paired_path = (
-                            output_dir
-                            / f"{sid}{env_pair_params.unpack_suffix}"
-                        )
+                        env_paired_path = output_dir / f"{sid}.env.paired.a3m"
                         with (
                             open(env_paired_path) as fin,
                             open(
-                                output_dir
-                                / f"{sid}{pair_params.unpack_suffix}",
+                                output_dir / f"{sid}.paired.a3m",
                                 "a",
                             ) as fout,
                         ):
                             shutil.copyfileobj(fin, fout)
                         env_paired_path.unlink()
 
-                    paired_path = (
-                        output_dir / f"{sid}{pair_params.unpack_suffix}"
-                    )
+                    paired_path = output_dir / f"{sid}.paired.a3m"
                     paired_msa.append(paired_path.read_text())
                     paired_path.unlink()
 
