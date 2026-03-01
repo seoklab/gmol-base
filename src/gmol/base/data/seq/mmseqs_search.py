@@ -369,6 +369,10 @@ class MMseqsQuery:
     unique_seqs: list[str]
     seq_counts: list[int]
 
+    @property
+    def heteromer(self) -> bool:
+        return len(self.unique_seqs) > 1
+
     @classmethod
     def from_msa_query(cls, msa_query: MsaQuery) -> "MMseqsQuery":
         query_seqs_counts = Counter(msa_query.seqs)
@@ -882,10 +886,8 @@ def run_search_from_path(
     sid_by_query: list[list[int]] = []
     sid = 0
     for q in queries_unique:
-        sids = []
-        for _ in q.unique_seqs:
-            sids.append(sid)
-            sid += 1
+        sids = list(range(sid, sid + len(q.unique_seqs)))
+        sid += len(q.unique_seqs)
         sid_by_query.append(sids)
 
     output_dir.mkdir(exist_ok=True, parents=True)
@@ -899,10 +901,10 @@ def run_search_from_path(
     runner.createdb(query_fas, output_dir / "qdb", shuffle=0)
 
     with (output_dir / "qdb.lookup").open("w") as f:
-        for fid, q in enumerate(queries_unique):
+        for fid, (q, sids) in enumerate(zip(queries_unique, sid_by_query)):
             raw_first_id = q.id.split()[0]
-            for sid_val in sid_by_query[fid]:
-                f.write(f"{sid_val}\t{raw_first_id}\t{fid}\n")
+            for sid in sids:
+                f.write(f"{sid}\t{raw_first_id}\t{fid}\n")
 
     mmseqs_search_monomer(
         runner,
@@ -911,7 +913,7 @@ def run_search_from_path(
         monomer_params,
     )
 
-    has_heteromer = any(len(q.unique_seqs) > 1 for q in queries_unique)
+    has_heteromer = any(q.heteromer for q in queries_unique)
     if has_heteromer:
         mmseqs_search_pair(
             runner,
@@ -929,54 +931,48 @@ def run_search_from_path(
                 ".env.paired.a3m",
             )
 
-    if any(q.is_complex for q in queries):
-        for qid, q in enumerate(queries_unique):
+        for qid, (q, sids) in enumerate(zip(queries_unique, sid_by_query)):
             unpaired_msa: list[str] = []
             paired_msa: list[str] = []
-            heteromer = len(q.unique_seqs) > 1
-            for sid_val in sid_by_query[qid]:
-                a3m_path = output_dir / f"{sid_val}.a3m"
+
+            for sid in sids:
+                a3m_path = output_dir / f"{sid}.a3m"
                 unpaired_msa.append(a3m_path.read_text())
                 a3m_path.unlink()
 
-                paired_path = output_dir / f"{sid_val}.paired.a3m"
+                paired_path = output_dir / f"{sid}.paired.a3m"
                 if env_pair_params is not None:
-                    env_paired_path = output_dir / f"{sid_val}.env.paired.a3m"
-                    if heteromer:
+                    env_paired_path = output_dir / f"{sid}.env.paired.a3m"
+                    if q.heteromer:
                         with (
                             open(env_paired_path) as fin,
                             open(paired_path, "a") as fout,
                         ):
                             shutil.copyfileobj(fin, fout)
                     env_paired_path.unlink(missing_ok=True)
-                if heteromer:
+                if q.heteromer:
                     paired_msa.append(paired_path.read_text())
                 paired_path.unlink(missing_ok=True)
 
             msa = msa_to_str(
                 unpaired_msa,
-                paired_msa if heteromer else None,
+                paired_msa if q.heteromer else None,
                 q.unique_seqs,
                 q.seq_counts,
             )
             (output_dir / f"{qid}.a3m").write_text(msa)
 
-    has_complex = any(q.is_complex for q in queries)
-    for qid, q in enumerate(queries_unique):
+    for qid, (q, sids) in enumerate(zip(queries_unique, sid_by_query)):
         out_key = safe_filename(q.id)
 
-        if has_complex:
-            src_a3m = output_dir / f"{qid}.a3m"
-        else:
-            src_a3m = output_dir / f"{sid_by_query[qid][0]}.a3m"
-        src_a3m.rename(output_dir / f"{out_key}.a3m")
+        output_dir.joinpath(f"{qid}.a3m").rename(output_dir / f"{out_key}.a3m")
 
         if monomer_params.template_db is not None:
             with (
                 output_dir / f"{out_key}_{monomer_params.template_db.stem}.m8"
             ).open("w") as fout:
-                for sid_val in sid_by_query[qid]:
-                    t = output_dir / f"{sid_val}.m8"
+                for sid in sids:
+                    t = output_dir / f"{sid}.m8"
                     with t.open() as fin:
                         shutil.copyfileobj(fin, fout)
                     t.unlink()
