@@ -925,6 +925,7 @@ def run_search_from_path(
         for qid, q in enumerate(queries_unique):
             unpaired_msa: list[str] = []
             paired_msa: list[str] = []
+            heteromer = len(q.unique_seqs) > 1
             for _ in q.unique_seqs:
                 sid = next(seqid)
 
@@ -932,25 +933,23 @@ def run_search_from_path(
                 unpaired_msa.append(a3m_path.read_text())
                 a3m_path.unlink()
 
+                paired_path = output_dir / f"{sid}.paired.a3m"
                 if env_pair_params is not None:
                     env_paired_path = output_dir / f"{sid}.env.paired.a3m"
-                    with (
-                        open(env_paired_path) as fin,
-                        open(
-                            output_dir / f"{sid}.paired.a3m",
-                            "a",
-                        ) as fout,
-                    ):
-                        shutil.copyfileobj(fin, fout)
+                    if heteromer:
+                        with (
+                            open(env_paired_path) as fin,
+                            open(paired_path, "a") as fout,
+                        ):
+                            shutil.copyfileobj(fin, fout)
                     env_paired_path.unlink()
-
-                paired_path = output_dir / f"{sid}.paired.a3m"
-                paired_msa.append(paired_path.read_text())
+                if heteromer:
+                    paired_msa.append(paired_path.read_text())
                 paired_path.unlink()
 
             msa = msa_to_str(
                 unpaired_msa,
-                paired_msa if len(q.unique_seqs) > 1 else None,
+                paired_msa if heteromer else None,
                 q.unique_seqs,
                 q.seq_counts,
             )
