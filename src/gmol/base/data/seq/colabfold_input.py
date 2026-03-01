@@ -5,46 +5,66 @@ FASTA, CSV/TSV, A3M, directory of FASTA; complex format A:B; MolType for non-pro
 
 import logging
 import random
+from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
+from typing import Literal
 
 import pandas as pd
 
 _logger = logging.getLogger(__name__)
 
 
-class MolType(Enum):
-    """Minimal mol types for sequence line parsing (e.g. SEQ:RNA|ACGU|1)."""
+@dataclass
+class NonProteinQuery:
+    class Type(Enum):
+        RNA = ("sequence", "rna")
+        DNA = ("sequence", "dna")
+        CCD = ("ccdCodes", "ligand")
+        SMILES = ("smiles", "ligand")
 
-    RNA = ("sequence", "rna")
-    DNA = ("sequence", "dna")
-    CCD = ("ccdCodes", "ligand")
-    SMILES = ("smiles", "ligand")
+        @property
+        def af3code(self):
+            return self.value[0]
 
-    def __init__(self, af3code: str, upperclass: str) -> None:
-        self.af3code = af3code
-        self.upperclass = upperclass
+        @property
+        def upperclass(self):
+            return self.value[1]
+
+    moltype: "NonProteinQuery.Type"
+    definition: str
+    copies: int = 1
+
+
+@dataclass
+class MsaQuery:
+    id: str
+    seqs: list[str]
+    prev_msa: str = ""
+    non_proteins: list[NonProteinQuery] = field(default_factory=list)
 
     @classmethod
-    def get_moltype(cls, moltype: str) -> "MolType":
-        if moltype == "RNA":
-            return cls.RNA
-        if moltype == "DNA":
-            return cls.DNA
-        if moltype == "SMILES":
-            return cls.SMILES
-        if moltype == "CCD":
-            return cls.CCD
-        raise ValueError(
-            "Only dna, rna, ccd, smiles are allowed as molecule types."
-        )
+    def from_sequence(cls, seq_id: str, sequence: str) -> "MsaQuery":
+        parts = sequence.split(":")
+        if len(parts) == 1:
+            return cls(seq_id, [sequence.upper()])
 
+        protein_queries, other = classify_molecules(sequence)
+        return cls(seq_id, protein_queries, non_proteins=other)
 
-def safe_filename(file: str) -> str:
-    """Return a filesystem-safe version of the string."""
-    return "".join(
-        c if c.isalnum() or c in ["_", ".", "-"] else "_" for c in file
-    )
+    @property
+    def is_complex(self) -> bool:
+        if len(self.seqs) > 1 or len(self.non_proteins) > 0:
+            return True
+
+        if self.prev_msa and self.prev_msa.startswith("#"):
+            tab_sep = self.prev_msa.splitlines()[0][1:].split("\t")
+            if len(tab_sep) == 2:
+                card = list(map(int, tab_sep[1].split(",")))
+                if len(card) > 1 or (len(card) == 1 and card[0] > 1):
+                    return True
+
+        return False
 
 
 def parse_fasta(fasta_string: str) -> tuple[list[str], list[str]]:
@@ -69,25 +89,27 @@ def parse_fasta(fasta_string: str) -> tuple[list[str], list[str]]:
 
 def classify_molecules(
     query_sequence: str,
-) -> tuple[list[str], list[tuple[MolType, str, int]] | None]:
+) -> tuple[list[str], list[NonProteinQuery]]:
     """Split sequence line into protein parts and optional other mol types."""
-    sequences = query_sequence.upper().split(":")
+    sequences = query_sequence.split(":")
+
     protein_queries: list[str] = []
-    other_queries: list[tuple[MolType, str, int]] = []
+    other_queries: list[NonProteinQuery] = []
     for seq in sequences:
         if seq.count("|") == 0:
-            protein_queries.append(seq)
+            protein_queries.append(seq.upper())
         else:
             parts = seq.split("|")
             moltype, sequence, *rest = parts
-            moltype = MolType.get_moltype(moltype)
-            if moltype == MolType.SMILES:
+            moltype = NonProteinQuery.Type[moltype]
+            if moltype == NonProteinQuery.Type.SMILES:
                 sequence = sequence.replace(";", ":")
+            else:
+                sequence = sequence.upper()
             copies = int(rest[0]) if rest else 1
-            other_queries.append((moltype, sequence, copies))
-    if len(other_queries) == 0:
-        other_queries = []
-    return protein_queries, other_queries if other_queries else None
+            other_queries.append(NonProteinQuery(moltype, sequence, copies))
+
+    return protein_queries, other_queries
 
 
 def pair_sequences(
@@ -190,65 +212,41 @@ def msa_to_str(
     return msa
 
 
-QueryTuple = tuple[
-    str,
-    str | list[str],
-    list[str] | None,
-    list[tuple[MolType, str, int]] | None,
-]
-
-
-def get_queries_from_path(
-    input_path: str | Path,
-    sort_queries_by: str = "length",
-) -> tuple[list[QueryTuple], bool]:
-    """Read FASTA, CSV/TSV, A3M or directory. Returns (queries, is_complex)."""
-    input_path = Path(input_path)
-    if not input_path.exists():
-        raise OSError(f"{input_path} could not be found")
-
-    queries: list[QueryTuple] = []
+def get_queries(
+    input_path: Path,
+    sort_queries_by: Literal["length", "random"] | None = "length",
+) -> list[MsaQuery]:
+    """Read FASTA, CSV/TSV, A3M or directory. Returns queries."""
+    queries: list[MsaQuery] = []
 
     if input_path.is_file():
         if input_path.suffix in (".csv", ".tsv"):
             sep = "\t" if input_path.suffix == ".tsv" else ","
             df = pd.read_csv(input_path, sep=sep, dtype=str)
-            if "id" not in df.columns or "sequence" not in df.columns:
-                raise ValueError(
-                    "CSV/TSV must have 'id' and 'sequence' columns"
-                )
-            for row in df.itertuples(index=False):
-                seq_id = str(row.id)
-                sequence = str(row.sequence).upper()
-                parts = sequence.split(":")
-                if len(parts) == 1:
-                    queries.append((seq_id, sequence, None, None))
-                else:
-                    protein_queries, other = classify_molecules(sequence)
-                    queries.append((seq_id, protein_queries, None, other))
+            queries.extend(
+                MsaQuery.from_sequence(row.id, row.sequence)
+                for row in df.itertuples(index=False)
+            )
         elif input_path.suffix == ".a3m":
             seqs, _ = parse_fasta(input_path.read_text())
             if len(seqs) == 0:
                 raise ValueError(f"{input_path} is empty")
             queries.append(
-                (input_path.stem, seqs[0], [input_path.read_text()], None)
+                MsaQuery(
+                    input_path.stem,
+                    [seqs[0]],
+                    prev_msa=input_path.read_text(),
+                )
             )
         elif input_path.suffix.lower() in (".fasta", ".faa", ".fa"):
             sequences, headers = parse_fasta(input_path.read_text())
-            for sequence, header in zip(sequences, headers):
-                sequence = sequence.upper()
-                if sequence.count(":") == 0:
-                    queries.append((header, sequence, None, None))
-                else:
-                    protein_queries, other = classify_molecules(sequence)
-                    queries.append((header, protein_queries, None, other))
-        elif input_path.suffix.lower() in (".pdb", ".cif"):
-            raise ValueError("PDB/CIF not supported. Use FASTA or CSV input.")
+            queries.extend(
+                MsaQuery.from_sequence(header, sequence)
+                for sequence, header in zip(sequences, headers)
+            )
         else:
             raise ValueError(f"Unknown file format {input_path.suffix}")
     else:
-        if not input_path.is_dir():
-            raise ValueError("Expected a file or directory")
         for file in sorted(input_path.iterdir()):
             if not file.is_file():
                 continue
@@ -261,38 +259,21 @@ def get_queries_from_path(
                 if len(seqs) == 0:
                     _logger.error("%s is empty", file)
                     continue
-                queries.append((file.stem, seqs[0].upper(), [content], None))
+                queries.append(
+                    MsaQuery(file.stem, [seqs[0].upper()], prev_msa=content)
+                )
             else:
                 seqs, _ = parse_fasta(file.read_text())
                 if len(seqs) == 0:
                     _logger.error("%s is empty", file)
                     continue
-                q = seqs[0].upper()
-                if q.count(":") == 0:
-                    queries.append((file.stem, q, None, None))
-                else:
-                    protein_queries, other = classify_molecules(q)
-                    queries.append((file.stem, protein_queries, None, other))
+
+                q = seqs[0]
+                queries.append(MsaQuery.from_sequence(file.stem, q))
 
     if sort_queries_by == "length":
-        queries.sort(
-            key=lambda t: len(
-                "".join(t[1]) if isinstance(t[1], list) else t[1]
-            )
-        )
+        queries.sort(key=lambda t: len("".join(t.seqs)))
     elif sort_queries_by == "random":
         random.shuffle(queries)
 
-    is_complex = False
-    for _, query_sequence, a3m_lines, _ in queries:
-        if isinstance(query_sequence, list):
-            is_complex = True
-            break
-        if a3m_lines is not None and a3m_lines[0].startswith("#"):
-            tab_sep = a3m_lines[0].splitlines()[0][1:].split("\t")
-            if len(tab_sep) == 2:
-                card = list(map(int, tab_sep[1].split(",")))
-                if len(card) > 1 or (len(card) == 1 and card[0] > 1):
-                    is_complex = True
-                    break
-    return queries, is_complex
+    return queries
