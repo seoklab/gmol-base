@@ -133,7 +133,7 @@ def classify_molecules(
         else:
             parts = seq.split("|")
             moltype, sequence, *rest = parts
-            moltype = NonProteinQuery.Type[moltype]
+            moltype = NonProteinQuery.Type[moltype.upper()]
             if moltype == NonProteinQuery.Type.SMILES:
                 sequence = sequence.replace(";", ":")
             else:
