@@ -913,8 +913,7 @@ def run_search_from_path(
         monomer_params,
     )
 
-    has_heteromer = any(q.heteromer for q in queries_unique)
-    if has_heteromer:
+    if any(q.heteromer for q in queries_unique):
         mmseqs_search_pair(
             runner,
             output_dir / "qdb",
@@ -931,41 +930,38 @@ def run_search_from_path(
                 ".env.paired.a3m",
             )
 
-        for qid, (q, sids) in enumerate(zip(queries_unique, sid_by_query)):
-            unpaired_msa: list[str] = []
-            paired_msa: list[str] = []
+    for q, sids in zip(queries_unique, sid_by_query):
+        unpaired_msa: list[str] = []
+        paired_msa: list[str] = []
 
-            for sid in sids:
-                a3m_path = output_dir / f"{sid}.a3m"
-                unpaired_msa.append(a3m_path.read_text())
-                a3m_path.unlink()
+        for sid in sids:
+            a3m_path = output_dir / f"{sid}.a3m"
+            unpaired_msa.append(a3m_path.read_text())
+            a3m_path.unlink()
 
-                paired_path = output_dir / f"{sid}.paired.a3m"
-                if env_pair_params is not None:
-                    env_paired_path = output_dir / f"{sid}.env.paired.a3m"
-                    if q.heteromer:
-                        with (
-                            open(env_paired_path) as fin,
-                            open(paired_path, "a") as fout,
-                        ):
-                            shutil.copyfileobj(fin, fout)
-                    env_paired_path.unlink(missing_ok=True)
+            paired_path = output_dir / f"{sid}.paired.a3m"
+            if env_pair_params is not None:
+                env_paired_path = output_dir / f"{sid}.env.paired.a3m"
                 if q.heteromer:
-                    paired_msa.append(paired_path.read_text())
-                paired_path.unlink(missing_ok=True)
+                    with (
+                        open(env_paired_path) as fin,
+                        open(paired_path, "a") as fout,
+                    ):
+                        shutil.copyfileobj(fin, fout)
+                env_paired_path.unlink(missing_ok=True)
+            if q.heteromer:
+                paired_msa.append(paired_path.read_text())
+            paired_path.unlink(missing_ok=True)
 
-            msa = msa_to_str(
-                unpaired_msa,
-                paired_msa if q.heteromer else None,
-                q.unique_seqs,
-                q.seq_counts,
-            )
-            (output_dir / f"{qid}.a3m").write_text(msa)
+        msa = msa_to_str(
+            unpaired_msa,
+            paired_msa if q.heteromer else None,
+            q.unique_seqs,
+            q.seq_counts,
+        )
 
-    for qid, (q, sids) in enumerate(zip(queries_unique, sid_by_query)):
         out_key = safe_filename(q.id)
-
-        output_dir.joinpath(f"{qid}.a3m").rename(output_dir / f"{out_key}.a3m")
+        (output_dir / f"{out_key}.a3m").write_text(msa)
 
         if monomer_params.template_db is not None:
             with (
