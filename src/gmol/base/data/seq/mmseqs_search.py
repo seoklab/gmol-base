@@ -39,14 +39,21 @@ See:
 import logging
 import math
 import os
-import random
+import shutil
 import subprocess as sp
+import typing
+from collections import Counter
 from collections.abc import Iterable, Sequence
+from dataclasses import dataclass, field
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import Literal
 
-import pandas as pd
+from gmol.base.data.seq.colabfold_input import (
+    MsaQuery,
+    get_queries,
+    msa_to_str,
+)
+from gmol.base.path import safe_filename
 
 _logger = logging.getLogger(__name__)
 
@@ -69,12 +76,13 @@ class MMseqs:
         self,
         params: Sequence[str | Path],
         output_path: Path | None = None,
+        skip_existing: bool | None = None,
     ):
-        if (
-            self.skip_existing
-            and output_path is not None
-            and output_path.is_file()
-        ):
+        skip_existing = (
+            self.skip_existing if skip_existing is None else skip_existing
+        )
+
+        if skip_existing and output_path is not None and output_path.is_file():
             _logger.info(
                 "Skipping %s because %s already exists", params[0], output_path
             )
@@ -88,11 +96,18 @@ class MMseqs:
         query_file: Path,
         qdb: Path,
         shuffle: int = 0,
+        dbtype: int = 1,
     ):
-        self._run(
-            ["createdb", query_file, qdb, "--shuffle", str(shuffle)],
-            output_path=qdb,
-        )
+        params: list[str | Path] = [
+            "createdb",
+            query_file,
+            qdb,
+            "--shuffle",
+            str(shuffle),
+        ]
+        if dbtype != 0:
+            params.extend(["--dbtype", str(dbtype)])
+        self._run(params, output_path=qdb, skip_existing=False)
 
     def search(
         self,
@@ -221,31 +236,32 @@ class MMseqs:
         res: Path,
         dest: Path,
         db_load_mode: int = 2,
-        align_eval: int = 10,
+        align_eval: float | str = 10,
         max_accept: int = 1000000,
-        alt_ali: int = 10,
+        alt_ali: int | None = 10,
+        backtrace: bool = True,
     ):
-        self._run(
-            [
-                "align",
-                qdb,
-                db,
-                res,
-                dest,
-                "--db-load-mode",
-                str(db_load_mode),
-                "-e",
-                str(align_eval),
-                "--max-accept",
-                str(max_accept),
-                "--threads",
-                str(self.threads),
-                "--alt-ali",
-                str(alt_ali),
-                "-a",
-            ],
-            output_path=dest,
-        )
+        args: list[str | Path] = [
+            "align",
+            qdb,
+            db,
+            res,
+            dest,
+            "--db-load-mode",
+            str(db_load_mode),
+            "-e",
+            str(align_eval),
+            "--max-accept",
+            str(max_accept),
+            "--threads",
+            str(self.threads),
+        ]
+        if alt_ali is not None:
+            args += ["--alt-ali", str(alt_ali)]
+        if backtrace:
+            args.append("-a")
+
+        self._run(args, output_path=dest)
 
     def expandaln(
         self,
@@ -283,54 +299,307 @@ class MMseqs:
     def mergedbs(self, qdb: Path, dest: Path, *dbs: Path):
         self._run(["mergedbs", qdb, dest, *dbs], output_path=dest)
 
+    def convertalis(
+        self,
+        qdb: Path,
+        db: Path,
+        res: Path,
+        dest: Path,
+        db_load_mode: int = 2,
+        format_output: str = (
+            "query,target,fident,alnlen,mismatch,gapopen,"
+            "qstart,qend,tstart,tend,evalue,bits,cigar"
+        ),
+        db_output: int = 1,
+    ):
+        """Convert alignment result to tabular or DB. Skip if dest.dbtype exists."""
+        skip_path = Path(str(dest) + ".dbtype")
+        self._run(
+            [
+                "convertalis",
+                qdb,
+                db,
+                res,
+                dest,
+                "--format-output",
+                format_output,
+                "--db-output",
+                str(db_output),
+                "--db-load-mode",
+                str(db_load_mode),
+                "--threads",
+                str(self.threads),
+            ],
+            output_path=skip_path,
+        )
 
-def get_queries(
-    file_path: Path, sort_by: Literal["length", "random"] = "length"
-) -> list[tuple[str, list[str]]]:
-    """Loads sequences from a specified file (CSV, TSV, or FASTA) and returns
-    a list of tuples containing job name, sequence(s).
-    The sequences can be sorted by length or shuffled randomly.
-    """
-    if not file_path.is_file():
-        raise FileNotFoundError(f"File '{file_path}' could not be found.")
+    def pairaln(
+        self,
+        qdb: Path,
+        db: Path,
+        res: Path,
+        dest: Path,
+        db_load_mode: int = 2,
+        pairing_mode: int = 0,
+        pairing_dummy_mode: int = 0,
+    ):
+        self._run(
+            [
+                "pairaln",
+                qdb,
+                db,
+                res,
+                dest,
+                "--db-load-mode",
+                str(db_load_mode),
+                "--pairing-mode",
+                str(pairing_mode),
+                "--pairing-dummy-mode",
+                str(pairing_dummy_mode),
+                "--threads",
+                str(self.threads),
+            ],
+            output_path=dest,
+        )
 
-    sep = "\t" if file_path.suffix == ".tsv" else ","
-    df = pd.read_csv(file_path, sep=sep)
-    if "id" not in df.columns or "sequence" not in df.columns:
-        raise ValueError("The file must contain 'id' and 'sequence' columns.")
 
-    sequences: list[tuple[str, list[str]]] = [
-        (seq_id, sequence.upper().split(":"))
-        for seq_id, sequence in df[["id", "sequence"]].itertuples(index=False)
-    ]
+@dataclass
+class MMseqsQuery:
+    id: str
+    unique_seqs: list[str]
+    seq_counts: list[int]
 
-    if sort_by == "length":
-        sequences.sort(key=lambda seqs: len("".join(seqs[1])))
-    elif sort_by == "random":
-        random.shuffle(sequences)
-    else:
-        raise ValueError("Invalid sort_by value. Use 'length' or 'random'.")
+    @property
+    def heteromer(self) -> bool:
+        return len(self.unique_seqs) > 1
 
-    _logger.info("Loaded %d sequences from %s", len(sequences), file_path)
-    return sequences
+    @classmethod
+    def from_msa_query(cls, msa_query: MsaQuery) -> "MMseqsQuery":
+        query_seqs_counts = Counter(msa_query.seqs)
+        query_seqs_unique = list(query_seqs_counts.keys())
+        seq_cnt = list(query_seqs_counts.values())
+        return cls(msa_query.id, query_seqs_unique, seq_cnt)
+
+
+@dataclass(kw_only=True)
+class MMseqsCommonSearchParams:
+    prefilter_mode: int = 0
+    s: float | None = 8
+    gpu: int = 0
+    db_load_mode: int = 2
+    ignore_index: bool = True
+
+    @property
+    def search_param(self):
+        param = [
+            "--num-iterations",
+            "3",
+            "--db-load-mode",
+            str(self.db_load_mode),
+            "-a",
+            "-e",
+            "0.1",
+            "--max-seqs",
+            "10000",
+        ]
+        if self.gpu:
+            # gpu version only supports ungapped prefilter currently
+            param += [
+                "--gpu",
+                str(self.gpu),
+                "--prefilter-mode",
+                "1",
+            ]
+        else:
+            param += ["--prefilter-mode", str(self.prefilter_mode)]
+            if self.s is not None:
+                param += ["-s", f"{self.s:.1f}"]
+            else:
+                param += ["--k-score", "'seq:96,prof:80'"]
+        return param
+
+
+@dataclass(kw_only=True)
+class MMseqsMonomerSearchParams(MMseqsCommonSearchParams):
+    uniref_db: Path
+    metagenomic_db: Path | None
+    template_db: Path | None
+
+    expand_eval: float = math.inf
+    align_eval: int = 10
+    diff: int = 3000
+    qsc: float = -20.0
+    max_accept: int = 1000000
+    template_s: float | None = 7.5
+    alt_ali: int = 10
+
+    limit: bool = True
+
+    suffix1: str = field(init=False)
+    suffix2: str = field(init=False)
+    suffix3: str = field(init=False)
+
+    @property
+    def template_search_param(self):
+        param = []
+        if self.gpu:
+            # gpu version only supports ungapped prefilter currently
+            param += [
+                "--gpu",
+                str(self.gpu),
+                "--prefilter-mode",
+                "1",
+            ]
+        else:
+            param += ["--prefilter-mode", str(self.prefilter_mode)]
+            if self.template_s is not None:
+                param += ["-s", f"{self.template_s:.1f}"]
+        return param
+
+    @property
+    def filter_param(self):
+        return [
+            "--filter-msa",
+            str(int(self.limit)),
+            "--filter-min-enable",
+            "1000",
+            "--diff",
+            str(self.diff),
+            "--qid",
+            "0.0,0.2,0.4,0.6,0.8,1.0",
+            "--qsc",
+            "0",
+            "--max-seq-id",
+            "0.95",
+        ]
+
+    @property
+    def expand_param(self):
+        return [
+            "--expansion-mode",
+            "0",
+            "-e",
+            str(self.expand_eval),
+            "--expand-filter-clusters",
+            str(int(self.limit)),
+            "--max-seq-id",
+            "0.95",
+        ]
+
+    @property
+    def udb1(self) -> Path:
+        return self.uniref_db.with_name(f"{self.uniref_db.name}{self.suffix1}")
+
+    @property
+    def udb2(self) -> Path:
+        return self.uniref_db.with_name(f"{self.uniref_db.name}{self.suffix2}")
+
+    @property
+    def mdb1(self) -> Path:
+        mdb = typing.cast(Path, self.metagenomic_db)
+        return mdb.with_name(f"{mdb.name}{self.suffix1}")
+
+    @property
+    def mdb2(self) -> Path:
+        mdb = typing.cast(Path, self.metagenomic_db)
+        return mdb.with_name(f"{mdb.name}{self.suffix2}")
+
+    @property
+    def tdb(self) -> Path:
+        tdb = typing.cast(Path, self.template_db)
+        return tdb.with_name(f"{tdb.name}{self.suffix3}")
+
+    def __post_init__(self):
+        if self.limit:
+            self.align_eval = 10
+            self.qsc = 0.8
+            self.max_accept = 100000
+
+        used_dbs = [self.uniref_db]
+        if self.template_db is not None:
+            used_dbs.append(self.template_db)
+        if self.metagenomic_db is not None:
+            used_dbs.append(self.metagenomic_db)
+
+        for db in used_dbs:
+            if not db.with_name(f"{db.name}.dbtype").is_file():
+                raise FileNotFoundError(f"Database {db} does not exist")
+
+            if self.ignore_index or (
+                not db.with_name(f"{db.name}.idx").is_file()
+                and not db.with_name(f"{db.name}.idx.index").is_file()
+            ):
+                _logger.info("Search does not use index")
+                self.db_load_mode = 0
+                self.suffix1 = "_seq"
+                self.suffix2 = "_aln"
+                self.suffix3 = ""
+            else:
+                self.suffix1 = ".idx"
+                self.suffix2 = ".idx"
+                self.suffix3 = ".idx"
+
+
+@dataclass(kw_only=True)
+class MMseqsPairSearchParams(MMseqsCommonSearchParams):
+    search_db: Path
+
+    pairing_strategy: int = 0
+
+    suffix1: str = field(init=False)
+    suffix2: str = field(init=False)
+
+    @property
+    def expand_param(self):
+        return [
+            "--expansion-mode",
+            "0",
+            "-e",
+            "inf",
+            "--expand-filter-clusters",
+            "0",
+            "--max-seq-id",
+            "0.95",
+        ]
+
+    @property
+    def udb1(self) -> Path:
+        return self.search_db.with_name(f"{self.search_db.name}{self.suffix1}")
+
+    @property
+    def udb2(self) -> Path:
+        return self.search_db.with_name(f"{self.search_db.name}{self.suffix2}")
+
+    def __post_init__(self):
+        if not self.search_db.with_name(
+            f"{self.search_db.name}.dbtype"
+        ).is_file():
+            raise FileNotFoundError(
+                f"Database {self.search_db} does not exist"
+            )
+
+        if self.ignore_index or (
+            not self.search_db.with_name(
+                f"{self.search_db.name}.idx"
+            ).is_file()
+            and not self.search_db.with_name(
+                f"{self.search_db.name}.idx.index"
+            ).is_file()
+        ):
+            _logger.info("Search does not use index")
+            self.db_load_mode = 0
+            self.suffix1 = "_seq"
+            self.suffix2 = "_aln"
+        else:
+            self.suffix1 = ".idx"
+            self.suffix2 = ".idx"
 
 
 def mmseqs_search_monomer(
     mmseqs: MMseqs,
     qdb: Path,
     output_dir: Path,
-    uniref_db: Path,
-    metagenomic_db: Path | None,
-    limit: bool = True,
-    expand_eval: float = math.inf,
-    align_eval: int = 10,
-    diff: int = 3000,
-    qsc: float = -20.0,
-    max_accept: int = 1000000,
-    prefilter_mode: int = 0,
-    s: float | None = 8,
-    db_load_mode: int = 2,
-    alt_ali: int = 10,
+    params: MMseqsMonomerSearchParams,
 ):
     """
     Run mmseqs with a local colabfold database set
@@ -339,198 +608,371 @@ def mmseqs_search_monomer(
     * db3: metagenomic db (colabfold_envdb_202108 or bfd_mgy_colabfold,
       the former is preferred)
     """
-    used_dbs = [uniref_db]
-    if metagenomic_db is not None:
-        used_dbs.append(metagenomic_db)
-
-    for db in used_dbs:
-        if not db.with_name(f"{db.name}.dbtype").is_file():
-            raise FileNotFoundError(f"Database {db} does not exist")
-
-        if (
-            not db.with_name(f"{db.name}.idx").is_file()
-            and not db.with_name(f"{db.name}.idx.index").is_file()
-        ) or os.environ.get("MMSEQS_IGNORE_INDEX", ""):
-            _logger.info("Search does not use index")
-            db_load_mode = 0
-            suffix1 = "_seq"
-            suffix2 = "_aln"
-        else:
-            suffix1 = ".idx"
-            suffix2 = ".idx"
+    p = params
 
     output_dir.mkdir(exist_ok=True, parents=True)
-
-    if limit:
-        # 0.1 was not used in benchmarks due to POSIX shell bug in line above
-        #  EXPAND_EVAL=0.1
-        align_eval = 10
-        qsc = 0.8
-        max_accept = 100000
-
-    search_param = [
-        "--num-iterations",
-        "3",
-        "--db-load-mode",
-        str(db_load_mode),
-        "-a",
-        "-e",
-        "0.1",
-        "--max-seqs",
-        "10000",
-        "--prefilter-mode",
-        str(prefilter_mode),
-    ]
-    if s is not None:
-        search_param += ["-s", f"{s:.1f}"]
-
-    filter_param = [
-        "--filter-msa",
-        str(int(limit)),
-        "--filter-min-enable",
-        "1000",
-        "--diff",
-        str(diff),
-        "--qid",
-        "0.0,0.2,0.4,0.6,0.8,1.0",
-        "--qsc",
-        "0",
-        "--max-seq-id",
-        "0.95",
-    ]
-    expand_param = [
-        "--expansion-mode",
-        "0",
-        "-e",
-        str(expand_eval),
-        "--expand-filter-clusters",
-        str(int(limit)),
-        "--max-seq-id",
-        "0.95",
-    ]
 
     with TemporaryDirectory() as tmpd:
         base = Path(tmpd)
 
-        udb1 = uniref_db.with_name(f"{uniref_db.name}{suffix1}")
-        udb2 = uniref_db.with_name(f"{uniref_db.name}{suffix2}")
-
         mmseqs.search(
             qdb,
-            uniref_db,
+            p.uniref_db,
             base / "res",
             base / "tmp",
-            additional_search_param=search_param,
+            additional_search_param=p.search_param,
         )
         mmseqs.mvdb(base / "tmp/latest/profile_1", base / "prof_res")
-        mmseqs.lndb(base / "pdb_h", base / "prof_res_h")
+        mmseqs.lndb(qdb.parent / f"{qdb.name}_h", base / "prof_res_h")
         mmseqs.expandaln(
             qdb,
-            udb1,
+            p.udb1,
             base / "res",
-            udb2,
+            p.udb2,
             base / "res_exp",
-            db_load_mode=db_load_mode,
-            additional_expand_param=expand_param,
+            db_load_mode=p.db_load_mode,
+            additional_expand_param=p.expand_param,
         )
         mmseqs.align(
             base / "prof_res",
-            udb1,
+            p.udb1,
             base / "res_exp",
             base / "res_exp_realign",
-            db_load_mode=db_load_mode,
-            align_eval=align_eval,
-            max_accept=max_accept,
-            alt_ali=alt_ali,
+            db_load_mode=p.db_load_mode,
+            align_eval=p.align_eval,
+            max_accept=p.max_accept,
+            alt_ali=p.alt_ali,
         )
         mmseqs.filterresult(
             qdb,
-            udb1,
+            p.udb1,
             base / "res_exp_realign",
             base / "res_exp_realign_filter",
-            db_load_mode=db_load_mode,
+            db_load_mode=p.db_load_mode,
             qid="0",
-            qsc=qsc,
+            qsc=p.qsc,
             diff=0,
             max_seq_id=1.0,
             filter_min_enable=100,
         )
         mmseqs.result2msa(
             qdb,
-            udb1,
+            p.udb1,
             base / "res_exp_realign_filter",
             base / "uniref.a3m",
             msa_format_mode=6,
-            db_load_mode=db_load_mode,
-            additional_params=filter_param,
+            db_load_mode=p.db_load_mode,
+            additional_params=p.filter_param,
         )
         mmseqs.rmdb(base / "res_exp_realign_filter")
         mmseqs.rmdb(base / "res_exp_realign")
         mmseqs.rmdb(base / "res_exp")
         mmseqs.rmdb(base / "res")
 
-        if metagenomic_db is not None:
-            mdb1 = metagenomic_db.with_name(f"{metagenomic_db.name}{suffix1}")
-            mdb2 = metagenomic_db.with_name(f"{metagenomic_db.name}{suffix2}")
-
+        if p.metagenomic_db is not None:
             mmseqs.search(
                 base / "prof_res",
-                metagenomic_db,
+                p.metagenomic_db,
                 base / "res_env",
                 base / "tmp3",
-                additional_search_param=search_param,
+                additional_search_param=p.search_param,
             )
 
             additional_expand_param = [
-                "--expansion_mode",
+                "--expansion-mode",
                 "0",
-                "--e",
-                str(expand_eval),
+                "-e",
+                str(p.expand_eval),
             ]
             mmseqs.expandaln(
-                qdb,
-                mdb1,
+                base / "prof_res",
+                p.mdb1,
                 base / "res_env",
-                mdb2,
+                p.mdb2,
                 base / "res_env_exp",
-                db_load_mode=db_load_mode,
+                db_load_mode=p.db_load_mode,
                 additional_expand_param=additional_expand_param,
             )
             mmseqs.align(
                 base / "tmp3/latest/profile_1",
-                mdb1,
+                p.mdb1,
                 base / "res_env_exp",
                 base / "res_env_exp_realign",
-                db_load_mode=db_load_mode,
-                align_eval=align_eval,
-                max_accept=max_accept,
-                alt_ali=alt_ali,
+                db_load_mode=p.db_load_mode,
+                align_eval=p.align_eval,
+                max_accept=p.max_accept,
+                alt_ali=p.alt_ali,
             )
             mmseqs.filterresult(
                 qdb,
-                mdb1,
+                p.mdb1,
                 base / "res_env_exp_realign",
                 base / "res_env_exp_realign_filter",
-                db_load_mode=db_load_mode,
+                db_load_mode=p.db_load_mode,
                 qid="0",
-                qsc=qsc,
+                qsc=p.qsc,
                 diff=0,
                 max_seq_id=1.0,
                 filter_min_enable=100,
             )
             mmseqs.result2msa(
                 qdb,
-                mdb1,
+                p.mdb1,
                 base / "res_env_exp_realign_filter",
                 base / "bfd.mgnify30.metaeuk30.smag30.a3m",
                 msa_format_mode=6,
-                db_load_mode=db_load_mode,
-                additional_params=filter_param,
+                db_load_mode=p.db_load_mode,
+                additional_params=p.filter_param,
             )
             mmseqs.rmdb(base / "res_env_exp_realign_filter")
             mmseqs.rmdb(base / "res_env_exp_realign")
             mmseqs.rmdb(base / "res_env_exp")
             mmseqs.rmdb(base / "res_env")
 
-        mmseqs.mergedbs(qdb, base / "final.a3m", *used_dbs)
+        if p.template_db is not None:
+            mmseqs.search(
+                base / "prof_res",
+                p.template_db,
+                base / "res_pdb",
+                base / "tmp2",
+                additional_search_param=[
+                    "--db-load-mode",
+                    str(p.db_load_mode),
+                    "-a",
+                    "-e",
+                    "0.1",
+                    *p.template_search_param,
+                ],
+            )
+            mmseqs.convertalis(
+                base / "prof_res",
+                p.tdb,
+                base / "res_pdb",
+                base / p.template_db.name,
+                db_load_mode=p.db_load_mode,
+            )
+            mmseqs.rmdb(base / "res_pdb")
+
+        if p.metagenomic_db is not None:
+            mmseqs.mergedbs(
+                qdb,
+                base / "final.a3m",
+                base / "uniref.a3m",
+                base / "bfd.mgnify30.metaeuk30.smag30.a3m",
+            )
+        else:
+            mmseqs.mvdb(base / "uniref.a3m", base / "final.a3m")
+
         mmseqs.unpackdb(base / "final.a3m", output_dir)
+        if p.template_db is not None:
+            mmseqs.unpackdb(
+                base / p.template_db.name,
+                output_dir,
+                unpack_suffix=".m8",
+            )
+
+
+def mmseqs_search_pair(
+    mmseqs: MMseqs,
+    qdb: Path,
+    output_dir: Path,
+    params: MMseqsPairSearchParams,
+    unpack_suffix: str,
+) -> None:
+    p = params
+
+    with TemporaryDirectory() as tmpd:
+        base = Path(tmpd)
+
+        mmseqs.search(
+            qdb,
+            p.search_db,
+            base / "res",
+            base / "tmp",
+            additional_search_param=p.search_param,
+        )
+        mmseqs.mvdb(base / "tmp/latest/profile_1", base / "prof_res")
+        mmseqs.lndb(qdb.parent / f"{qdb.name}_h", base / "prof_res_h")
+        mmseqs.expandaln(
+            qdb,
+            p.udb1,
+            base / "res",
+            p.udb2,
+            base / "res_exp",
+            db_load_mode=p.db_load_mode,
+            additional_expand_param=p.expand_param,
+        )
+        mmseqs.align(
+            base / "prof_res",
+            p.udb1,
+            base / "res_exp",
+            base / "res_exp_realign",
+            db_load_mode=p.db_load_mode,
+            align_eval=0.001,
+            max_accept=1000000,
+            alt_ali=None,
+            backtrace=False,
+        )
+        mmseqs.pairaln(
+            qdb,
+            p.search_db,
+            base / "res_exp_realign",
+            base / "res_exp_realign_pair",
+            db_load_mode=p.db_load_mode,
+            pairing_mode=p.pairing_strategy,
+            pairing_dummy_mode=0,
+        )
+        mmseqs.align(
+            base / "prof_res",
+            p.udb1,
+            base / "res_exp_realign_pair",
+            base / "res_exp_realign_pair_bt",
+            db_load_mode=p.db_load_mode,
+            align_eval="inf",
+            max_accept=1000000,
+            alt_ali=None,
+        )
+        mmseqs.pairaln(
+            qdb,
+            p.search_db,
+            base / "res_exp_realign_pair_bt",
+            base / "res_final",
+            db_load_mode=p.db_load_mode,
+            pairing_mode=p.pairing_strategy,
+            pairing_dummy_mode=1,
+        )
+        mmseqs.result2msa(
+            qdb,
+            p.udb1,
+            base / "res_final",
+            base / "pair.a3m",
+            msa_format_mode=5,
+            db_load_mode=p.db_load_mode,
+        )
+
+        mmseqs.unpackdb(
+            base / "pair.a3m",
+            output_dir,
+            unpack_suffix=unpack_suffix,
+        )
+
+
+def run_search_from_path(
+    query: Path,
+    output_dir: Path,
+    threads: int = 1,
+    mmseqs: str | Path = "mmseqs",
+    *,
+    monomer_params: MMseqsMonomerSearchParams,
+    pair_params: MMseqsPairSearchParams,
+    env_pair_params: MMseqsPairSearchParams | None = None,
+) -> None:
+    """Run MSA search from a FASTA/CSV/dir path. Results written as
+    output_dir/<jobname>.a3m and output_dir/<jobname>_<template_db>.m8
+    (if template search is enabled).
+
+    For complex (multi-chain) input, runs monomer unpaired + optional paired
+    search and merges per job.
+    """
+    queries = get_queries(query, None)
+    if not queries:
+        raise ValueError(f"No queries found in {query}")
+
+    queries_unique: list[MMseqsQuery] = [
+        MMseqsQuery.from_msa_query(q) for q in queries
+    ]
+
+    # One global (qid, chain_idx) -> sid mapping for query.fas, merge, and template
+    sid_by_query: list[list[int]] = []
+    sid = 0
+    for q in queries_unique:
+        sids = list(range(sid, sid + len(q.unique_seqs)))
+        sid += len(q.unique_seqs)
+        sid_by_query.append(sids)
+
+    output_dir.mkdir(exist_ok=True, parents=True)
+    query_fas = output_dir / "query.fas"
+    with query_fas.open("w") as f:
+        for q in queries_unique:
+            for j, seq in enumerate(q.unique_seqs, start=101):
+                f.write(f">{j}\n{seq}\n")
+
+    runner = MMseqs(threads=threads, mmseqs=mmseqs)
+    runner.createdb(query_fas, output_dir / "qdb", shuffle=0)
+
+    with (output_dir / "qdb.lookup").open("w") as f:
+        for fid, (q, sids) in enumerate(zip(queries_unique, sid_by_query)):
+            raw_first_id = q.id.split()[0]
+            for sid in sids:
+                f.write(f"{sid}\t{raw_first_id}\t{fid}\n")
+
+    mmseqs_search_monomer(
+        runner,
+        output_dir / "qdb",
+        output_dir,
+        monomer_params,
+    )
+
+    if any(q.heteromer for q in queries_unique):
+        mmseqs_search_pair(
+            runner,
+            output_dir / "qdb",
+            output_dir,
+            pair_params,
+            ".paired.a3m",
+        )
+        if env_pair_params is not None:
+            mmseqs_search_pair(
+                runner,
+                output_dir / "qdb",
+                output_dir,
+                env_pair_params,
+                ".env.paired.a3m",
+            )
+
+    for q, sids in zip(queries_unique, sid_by_query):
+        unpaired_msa: list[str] = []
+        paired_msa: list[str] = []
+
+        for sid in sids:
+            a3m_path = output_dir / f"{sid}.a3m"
+            unpaired_msa.append(a3m_path.read_text())
+            a3m_path.unlink()
+
+            paired_path = output_dir / f"{sid}.paired.a3m"
+            if env_pair_params is not None:
+                env_paired_path = output_dir / f"{sid}.env.paired.a3m"
+                if q.heteromer:
+                    with (
+                        open(env_paired_path) as fin,
+                        open(paired_path, "a") as fout,
+                    ):
+                        shutil.copyfileobj(fin, fout)
+                env_paired_path.unlink(missing_ok=True)
+            if q.heteromer:
+                paired_msa.append(paired_path.read_text())
+            paired_path.unlink(missing_ok=True)
+
+        msa = msa_to_str(
+            unpaired_msa,
+            paired_msa if q.heteromer else None,
+            q.unique_seqs,
+            q.seq_counts,
+        )
+
+        out_key = safe_filename(q.id)
+        (output_dir / f"{out_key}.a3m").write_text(msa)
+
+        if monomer_params.template_db is not None:
+            with (
+                output_dir / f"{out_key}_{monomer_params.template_db.stem}.m8"
+            ).open("w") as fout:
+                for sid in sids:
+                    t = output_dir / f"{sid}.m8"
+                    with t.open() as fin:
+                        shutil.copyfileobj(fin, fout)
+                    t.unlink()
+
+    runner.rmdb(output_dir / "qdb")
+    runner.rmdb(output_dir / "qdb_h")
+    query_fas.unlink(missing_ok=True)
