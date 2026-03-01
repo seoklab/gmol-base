@@ -77,12 +77,13 @@ class MMseqs:
         self,
         params: Sequence[str | Path],
         output_path: Path | None = None,
+        skip_existing: bool | None = None,
     ):
-        if (
-            self.skip_existing
-            and output_path is not None
-            and output_path.is_file()
-        ):
+        skip_existing = (
+            self.skip_existing if skip_existing is None else skip_existing
+        )
+
+        if skip_existing and output_path is not None and output_path.is_file():
             _logger.info(
                 "Skipping %s because %s already exists", params[0], output_path
             )
@@ -107,7 +108,7 @@ class MMseqs:
         ]
         if dbtype != 0:
             params.extend(["--dbtype", str(dbtype)])
-        self._run(params, output_path=qdb)
+        self._run(params, output_path=qdb, skip_existing=False)
 
     def search(
         self,
@@ -682,7 +683,7 @@ def mmseqs_search_monomer(
                 str(p.expand_eval),
             ]
             mmseqs.expandaln(
-                qdb,
+                base / "prof_res",
                 p.mdb1,
                 base / "res_env",
                 p.mdb2,
@@ -743,7 +744,7 @@ def mmseqs_search_monomer(
             )
             mmseqs.convertalis(
                 base / "prof_res",
-                p.template_db,
+                p.tdb,
                 base / "res_pdb",
                 base / p.template_db.name,
                 db_load_mode=p.db_load_mode,
@@ -879,8 +880,8 @@ def run_search_from_path(
     output_dir.mkdir(exist_ok=True, parents=True)
     query_fas = output_dir / "query.fas"
     with query_fas.open("w") as f:
-        for i, q in enumerate(queries_unique, start=101):
-            for seq in q.unique_seqs:
+        for q in queries_unique:
+            for i, seq in enumerate(q.unique_seqs, start=101):
                 f.write(f">{i}\n{seq}\n")
 
     runner = MMseqs(threads=threads, mmseqs=mmseqs)
