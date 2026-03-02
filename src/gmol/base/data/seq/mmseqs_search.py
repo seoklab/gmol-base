@@ -856,61 +856,6 @@ def mmseqs_search_pair(
         )
 
 
-def _slice_a3m_sequence(seq: str, start: int, end: int) -> str:
-    """Extract columns corresponding to query positions [start, end) from an a3m sequence.
-
-    In a3m format:
-    - Uppercase letter or ``-``: aligned to a query position (counts toward query_pos).
-    - Lowercase letter: insertion relative to the query (does *not* advance query_pos);
-      belongs to the preceding aligned position.
-
-    We include a character when:
-    - Uppercase / ``-``: query_pos is in [start, end).
-    - Lowercase (insertion): the preceding aligned query_pos was in [start, end),
-      i.e., ``start < query_pos <= end`` after the last increment.
-    """
-    result: list[str] = []
-    query_pos = 0
-    for ch in seq:
-        if ch.isupper() or ch == "-":
-            if start <= query_pos < end:
-                result.append(ch)
-            query_pos += 1
-        else:  # lowercase insertion: belongs to query_pos - 1
-            if start < query_pos <= end:
-                result.append(ch)
-    return "".join(result)
-
-
-def _extract_chain_from_paired_a3m(
-    content: str, chain_lengths: list[int], chain_idx: int
-) -> str:
-    """Extract a single chain's columns from a concatenated paired a3m.
-
-    The paired a3m produced by ``mmseqs result2msa --msa-format-mode 5`` stores
-    all chains' sequences concatenated in each row.  Given the query sequence
-    lengths for every chain (``chain_lengths``), this function extracts only the
-    columns belonging to ``chain_idx``.
-    """
-    start = sum(chain_lengths[:chain_idx])
-    end = start + chain_lengths[chain_idx]
-
-    out: list[str] = []
-    header: str | None = None
-    for line in content.splitlines(keepends=True):
-        stripped = line.rstrip("\n")
-        if stripped.startswith(">"):
-            header = line
-        elif header is not None:
-            out.append(header)
-            out.append(_slice_a3m_sequence(stripped, start, end) + "\n")
-            header = None
-    # trailing header with no sequence (shouldn't happen, but be safe)
-    if header is not None:
-        out.append(header)
-    return "".join(out)
-
-
 def run_search_from_path(
     query: Path,
     output_dir: Path,
