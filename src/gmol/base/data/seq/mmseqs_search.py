@@ -600,6 +600,7 @@ def mmseqs_search_monomer(
     qdb: Path,
     output_dir: Path,
     params: MMseqsMonomerSearchParams,
+    temp_base: Path | None = None,
 ):
     """
     Run mmseqs with a local colabfold database set
@@ -612,7 +613,7 @@ def mmseqs_search_monomer(
 
     output_dir.mkdir(exist_ok=True, parents=True)
 
-    with TemporaryDirectory() as tmpd:
+    with TemporaryDirectory(dir=temp_base) as tmpd:
         base = Path(tmpd)
 
         mmseqs.search(
@@ -778,10 +779,11 @@ def mmseqs_search_pair(
     output_dir: Path,
     params: MMseqsPairSearchParams,
     unpack_suffix: str,
+    temp_base: Path | None = None,
 ) -> None:
     p = params
 
-    with TemporaryDirectory() as tmpd:
+    with TemporaryDirectory(dir=temp_base) as tmpd:
         base = Path(tmpd)
 
         mmseqs.search(
@@ -862,6 +864,7 @@ def run_search_from_path(
     output_dir: Path,
     threads: int = 1,
     mmseqs: str | Path = "mmseqs",
+    temp_base: Path | None = None,
     *,
     monomer_params: MMseqsMonomerSearchParams,
     pair_params: MMseqsPairSearchParams,
@@ -911,6 +914,7 @@ def run_search_from_path(
         output_dir / "qdb",
         output_dir,
         monomer_params,
+        temp_base,
     )
 
     if any(q.heteromer for q in queries_unique):
@@ -920,6 +924,7 @@ def run_search_from_path(
             output_dir,
             pair_params,
             ".paired.a3m",
+            temp_base,
         )
         if env_pair_params is not None:
             mmseqs_search_pair(
@@ -928,6 +933,7 @@ def run_search_from_path(
                 output_dir,
                 env_pair_params,
                 ".env.paired.a3m",
+                temp_base,
             )
 
     for q, sids in zip(queries_unique, sid_by_query):
