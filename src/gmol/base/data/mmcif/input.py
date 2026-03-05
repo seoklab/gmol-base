@@ -209,6 +209,10 @@ class PolymerChain:
     # [N_res, N_atom_type, 3]
     atom_coords: NDArray[np.float64]
 
+    # [N_res, N_atom_type]
+    # Temperature factor (B-factor) aligned with atom_coords. Missing values are NaN.
+    atom_b_factors: NDArray[np.float64]
+
     # Below is for reference, not used in input
     # [N_res]
     residue_ids: list[ResidueId | None]
@@ -230,6 +234,10 @@ class NonPolymerLigand:
     atom_ids: NDArray[np.str_]
     # [N_atom, 3]
     atom_coords: NDArray[np.float64]
+
+    # [N_atom]
+    # Temperature factor (B-factor) aligned with atom_ids. Missing values are NaN.
+    atom_b_factors: NDArray[np.float64] | None = None
 
     __pydantic_config__ = ConfigDict(arbitrary_types_allowed=True)
 
@@ -319,8 +327,40 @@ def build_atom_coords_from_ref(
     return coords
 
 
+def build_atom_b_factors_from_ref(
+    assembly: Assembly,
+    residues: list[Residue],
+    ref_ligand: RefLigandInput,
+) -> NDArray[np.float64]:
+    b_factors = np.full((len(ref_ligand.atom_ids),), np.nan, dtype=np.float64)
+
+    if len(residues) == 1:
+
+        def resolve_atom_id(residue_id: ResidueId, atom_id: str):
+            return atom_id
+    else:
+
+        def resolve_atom_id(residue_id: ResidueId, atom_id: str):
+            return unique_atom_id(residue_id, atom_id)
+
+    aid_to_index = {aid: i for i, aid in enumerate(ref_ligand.atom_ids)}
+    for residue in residues:
+        for atom in assembly.atoms_of_residue(residue):
+            atom_id = resolve_atom_id(residue.residue_id, atom.atom_id)
+            if atom_id not in aid_to_index:
+                continue
+
+            val = atom.b_factor
+            b_factors[aid_to_index[atom_id]] = (
+                np.nan if val is None else float(val)
+            )
+
+    return b_factors
+
+
 def _update_polymer_residue_coords(
     coords: NDArray[np.float64],
+    b_factors: NDArray[np.float64] | None,
     assembly: Assembly,
     residue: Residue,
     polymer_consts: PolymerConstants,
@@ -340,6 +380,11 @@ def _update_polymer_residue_coords(
     for atom in assembly.atoms_of_residue(residue):
         try:
             coords[atom_idxs[atom.atom_id]] = assembly.coords[atom.atom_idx]
+            if b_factors is not None:
+                val = atom.b_factor
+                b_factors[atom_idxs[atom.atom_id]] = (
+                    np.nan if val is None else float(val)
+                )
         except KeyError:
             if atom.atom_id not in well_known_atoms:
                 logger.warning(
@@ -362,6 +407,8 @@ def _update_polymer_residue_coords(
     dsq_nh2 = D.sqeuclidean(cd_nh1_nh2[0], cd_nh1_nh2[2])
     if dsq_nh1 > dsq_nh2:
         coords[[j, i]] = cd_nh1_nh2[1:]
+        if b_factors is not None:
+            b_factors[[j, i]] = b_factors[[i, j]]
 
 
 def _add_implicit_bb_bonds(
@@ -430,6 +477,11 @@ def _modres_as_ligand(
         [] if resid is None else [assembly.residues[resid]],
         ref_ligand,
     )
+    bfs = build_atom_b_factors_from_ref(
+        assembly,
+        [] if resid is None else [assembly.residues[resid]],
+        ref_ligand,
+    )
 
     ligand = NonPolymerLigand(
         entity_id=mod_entity,
@@ -437,6 +489,7 @@ def _modres_as_ligand(
         smiles=ref_ligand.smiles,
         atom_ids=np.array(ref_ligand.atom_ids, dtype=np.str_),
         atom_coords=crd,
+        atom_b_factors=bfs,
     )
     bonds = _add_implicit_bb_bonds(polymer, polymer_consts, mod_chain, res_idx)
 
@@ -551,6 +604,11 @@ def _build_sc_ligand(
         [] if resid is None else [assembly.residues[resid]],
         ref_ligand,
     )
+    bfs = build_atom_b_factors_from_ref(
+        assembly,
+        [] if resid is None else [assembly.residues[resid]],
+        ref_ligand,
+    )
 
     ligand = NonPolymerLigand(
         entity_id=mod_entity,
@@ -558,6 +616,7 @@ def _build_sc_ligand(
         smiles=ref_ligand.smiles,
         atom_ids=np.array(ref_ligand.atom_ids, dtype=np.str_),
         atom_coords=crd,
+        atom_b_factors=bfs,
     )
     return ligand
 
@@ -633,6 +692,11 @@ def process_polymer_chain(
             np.nan,
             dtype=np.float64,
         ),
+        atom_b_factors=np.full(
+            (len(chain.seqres), polymer_consts.max_res_atoms),
+            np.nan,
+            dtype=np.float64,
+        ),
         residue_ids=[seq.res_id for seq in chain.seqres],
     )
 
@@ -647,6 +711,7 @@ def process_polymer_chain(
             if seq.res_id is not None:
                 _update_polymer_residue_coords(
                     polymer.atom_coords[i],
+                    polymer.atom_b_factors[i],
                     assembly,
                     assembly.residues[seq.res_id],
                     polymer_consts,
@@ -681,6 +746,7 @@ def process_polymer_chain(
         if seq.res_id is not None:
             _update_polymer_residue_coords(
                 polymer.atom_coords[i],
+                polymer.atom_b_factors[i],
                 assembly,
                 assembly.residues[seq.res_id],
                 polymer_consts,
@@ -712,6 +778,7 @@ def process_ligand_chain(assembly: Assembly, chain: Chain):
     lig = input_from_reference(reference_from_mmcif(ccs, chain.branches))
     residues = [assembly.residues[rid] for rid, _ in ccs]
     coords = build_atom_coords_from_ref(assembly, residues, lig)
+    b_factors = build_atom_b_factors_from_ref(assembly, residues, lig)
 
     return NonPolymerLigand(
         chain_id=chain.chain_id,
@@ -719,6 +786,7 @@ def process_ligand_chain(assembly: Assembly, chain: Chain):
         smiles=lig.smiles,
         atom_ids=np.array(lig.atom_ids, dtype=np.str_),
         atom_coords=coords,
+        atom_b_factors=b_factors,
     )
 
 

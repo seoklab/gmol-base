@@ -260,6 +260,7 @@ class AssemblyAtom:
     comp_id: str
 
     occupancy: float
+    b_factor: float | None = None
 
     @property
     def chain_id(self) -> str:
@@ -273,6 +274,7 @@ class AssemblyAtom:
             atom_id=self.atom_id,
             comp_id=self.comp_id,
             occupancy=self.occupancy,
+            b_factor=self.b_factor,
         )
 
     def with_updates(self, idx: int, chain_suffix: str):
@@ -283,6 +285,7 @@ class AssemblyAtom:
             atom_id=self.atom_id,
             comp_id=self.comp_id,
             occupancy=self.occupancy,
+            b_factor=self.b_factor,
         )
 
 
@@ -357,6 +360,7 @@ class _PdbAtom:
     coords: NDArray[np.float64]
     element: str
     occupancy: float
+    b_factor: float
 
     def __post_init__(self):
         assert len(self.record) == 6
@@ -367,6 +371,7 @@ class _PdbAtom:
         assert len(self.element) <= 2
 
     def to_pdb_line(self, serial: int):
+        b = 0.0 if self.b_factor is None else float(self.b_factor)
         return (
             # 1-21
             f"{self.record}{serial:>5} {self.name} {self.res_name:>3} "
@@ -376,7 +381,7 @@ class _PdbAtom:
             f"   {self.coords[0]:>8.3f}{self.coords[1]:>8.3f}{self.coords[2]:>8.3f}"
             #                       6         7
             #                       12345678901234567
-            f"{self.occupancy:>6.2f}  0.00          {self.element.upper():>2}  "
+            f"{self.occupancy:>6.2f}{b:>6.2f}          {self.element.upper():>2}  "
         )
 
 
@@ -1358,6 +1363,7 @@ class Assembly(LooseModel):
                     coords=self.coords[atom.atom_idx],
                     element=atom.type_symbol,
                     occupancy=atom.occupancy,
+                    b_factor=atom.b_factor or 0.0,
                 )
             )
 
@@ -1607,6 +1613,7 @@ def _model_assembly(
             atom_id=atom_site.label_atom_id,
             comp_id=atom_site.label_comp_id,
             occupancy=atom_site.occupancy,
+            b_factor=atom_site.b_iso_or_equiv,
         )
         for i, atom_site in enumerate(atom_sites)
     ]
