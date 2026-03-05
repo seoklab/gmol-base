@@ -178,9 +178,21 @@ class AtomSite(LooseModel):
     cartn: NDArray[np.float64]
     occupancy: float
 
+    b_iso_or_equiv: float = Field(
+        default=float("nan"),
+        validation_alias="B_iso_or_equiv",
+    )
+
     @property
     def is_hydrogen(self):
         return self.type_symbol == "H"
+
+    @field_validator("b_iso_or_equiv", mode="before")
+    @staticmethod
+    def _coerce_b_iso_or_equiv(v: Any) -> Any:
+        if v in (".", "?", "", None):
+            return float("nan")
+        return v
 
     @model_validator(mode="before")
     @staticmethod
