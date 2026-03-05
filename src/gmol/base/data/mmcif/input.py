@@ -237,7 +237,7 @@ class NonPolymerLigand:
 
     # [N_atom]
     # Temperature factor (B-factor) aligned with atom_ids. Missing values are NaN.
-    atom_b_factors: NDArray[np.float64] | None = None
+    atom_b_factors: NDArray[np.float64]
 
     __pydantic_config__ = ConfigDict(arbitrary_types_allowed=True)
 
@@ -299,39 +299,12 @@ class Input:
     is_distillation: bool
 
 
-def build_atom_coords_from_ref(
+def _build_atom_data_from_ref(
     assembly: Assembly,
     residues: list[Residue],
     ref_ligand: RefLigandInput,
-) -> NDArray[np.float64]:
+) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
     coords = np.full((len(ref_ligand.atom_ids), 3), np.nan, dtype=np.float64)
-
-    if len(residues) == 1:
-
-        def resolve_atom_id(residue_id: ResidueId, atom_id: str):
-            return atom_id
-    else:
-
-        def resolve_atom_id(residue_id: ResidueId, atom_id: str):
-            return unique_atom_id(residue_id, atom_id)
-
-    aid_to_index = {aid: i for i, aid in enumerate(ref_ligand.atom_ids)}
-    for residue in residues:
-        for atom in assembly.atoms_of_residue(residue):
-            atom_id = resolve_atom_id(residue.residue_id, atom.atom_id)
-            if atom_id not in aid_to_index:
-                continue
-
-            coords[aid_to_index[atom_id]] = assembly.coords[atom.atom_idx]
-
-    return coords
-
-
-def build_atom_b_factors_from_ref(
-    assembly: Assembly,
-    residues: list[Residue],
-    ref_ligand: RefLigandInput,
-) -> NDArray[np.float64]:
     b_factors = np.full((len(ref_ligand.atom_ids),), np.nan, dtype=np.float64)
 
     if len(residues) == 1:
@@ -350,17 +323,16 @@ def build_atom_b_factors_from_ref(
             if atom_id not in aid_to_index:
                 continue
 
-            val = atom.b_factor
-            b_factors[aid_to_index[atom_id]] = (
-                np.nan if val is None else float(val)
-            )
+            idx = aid_to_index[atom_id]
+            coords[idx] = assembly.coords[atom.atom_idx]
+            b_factors[idx] = atom.b_factor
 
-    return b_factors
+    return coords, b_factors
 
 
 def _update_polymer_residue_coords(
     coords: NDArray[np.float64],
-    b_factors: NDArray[np.float64] | None,
+    b_factors: NDArray[np.float64],
     assembly: Assembly,
     residue: Residue,
     polymer_consts: PolymerConstants,
@@ -379,12 +351,9 @@ def _update_polymer_residue_coords(
 
     for atom in assembly.atoms_of_residue(residue):
         try:
-            coords[atom_idxs[atom.atom_id]] = assembly.coords[atom.atom_idx]
-            if b_factors is not None:
-                val = atom.b_factor
-                b_factors[atom_idxs[atom.atom_id]] = (
-                    np.nan if val is None else float(val)
-                )
+            idx = atom_idxs[atom.atom_id]
+            coords[idx] = assembly.coords[atom.atom_idx]
+            b_factors[idx] = atom.b_factor
         except KeyError:
             if atom.atom_id not in well_known_atoms:
                 logger.warning(
@@ -407,8 +376,7 @@ def _update_polymer_residue_coords(
     dsq_nh2 = D.sqeuclidean(cd_nh1_nh2[0], cd_nh1_nh2[2])
     if dsq_nh1 > dsq_nh2:
         coords[[j, i]] = cd_nh1_nh2[1:]
-        if b_factors is not None:
-            b_factors[[j, i]] = b_factors[[i, j]]
+        b_factors[[j, i]] = b_factors[[i, j]]
 
 
 def _add_implicit_bb_bonds(
@@ -472,12 +440,7 @@ def _modres_as_ligand(
 ):
     ref_mmcif = MmcifRefLigand(chem_comp.atoms, chem_comp.bonds)
     ref_ligand = input_from_reference(ref_mmcif)
-    crd = build_atom_coords_from_ref(
-        assembly,
-        [] if resid is None else [assembly.residues[resid]],
-        ref_ligand,
-    )
-    bfs = build_atom_b_factors_from_ref(
+    crd, bfs = _build_atom_data_from_ref(
         assembly,
         [] if resid is None else [assembly.residues[resid]],
         ref_ligand,
@@ -599,12 +562,7 @@ def _build_sc_ligand(
 ) -> NonPolymerLigand:
     ref_mmcif = MmcifRefLigand(sc_frag.atoms, sc_frag.bonds)
     ref_ligand = input_from_reference(ref_mmcif)
-    crd = build_atom_coords_from_ref(
-        assembly,
-        [] if resid is None else [assembly.residues[resid]],
-        ref_ligand,
-    )
-    bfs = build_atom_b_factors_from_ref(
+    crd, bfs = _build_atom_data_from_ref(
         assembly,
         [] if resid is None else [assembly.residues[resid]],
         ref_ligand,
@@ -777,8 +735,7 @@ def process_ligand_chain(assembly: Assembly, chain: Chain):
     ]
     lig = input_from_reference(reference_from_mmcif(ccs, chain.branches))
     residues = [assembly.residues[rid] for rid, _ in ccs]
-    coords = build_atom_coords_from_ref(assembly, residues, lig)
-    b_factors = build_atom_b_factors_from_ref(assembly, residues, lig)
+    coords, b_factors = _build_atom_data_from_ref(assembly, residues, lig)
 
     return NonPolymerLigand(
         chain_id=chain.chain_id,

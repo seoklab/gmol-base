@@ -178,15 +178,9 @@ class AtomSite(LooseModel):
     cartn: NDArray[np.float64]
     occupancy: float
 
-    # Temperature factor (aka B-factor) from mmCIF: _atom_site.B_iso_or_equiv
-    b_iso_or_equiv: float | None = Field(
-        default=None,
-        validation_alias=AliasChoices(
-            "B_iso_or_equiv",
-            "B_iso",
-            "b_iso_or_equiv",
-            "b_iso",
-        ),
+    b_iso_or_equiv: float = Field(
+        default=float("nan"),
+        validation_alias="B_iso_or_equiv",
     )
 
     @property
@@ -197,7 +191,7 @@ class AtomSite(LooseModel):
     @staticmethod
     def _coerce_b_iso_or_equiv(v: Any) -> Any:
         if v in (".", "?", "", None):
-            return None
+            return float("nan")
         return v
 
     @model_validator(mode="before")

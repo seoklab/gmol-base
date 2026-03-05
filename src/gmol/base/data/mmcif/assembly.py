@@ -1,5 +1,6 @@
 import enum
 import itertools
+import math
 from collections import defaultdict
 from collections.abc import Iterable
 from copy import deepcopy
@@ -260,7 +261,7 @@ class AssemblyAtom:
     comp_id: str
 
     occupancy: float
-    b_factor: float | None = None
+    b_factor: float
 
     @property
     def chain_id(self) -> str:
@@ -371,7 +372,7 @@ class _PdbAtom:
         assert len(self.element) <= 2
 
     def to_pdb_line(self, serial: int):
-        b = 0.0 if self.b_factor is None else float(self.b_factor)
+        b = self.b_factor if math.isfinite(self.b_factor) else 0.0
         return (
             # 1-21
             f"{self.record}{serial:>5} {self.name} {self.res_name:>3} "
@@ -1363,7 +1364,7 @@ class Assembly(LooseModel):
                     coords=self.coords[atom.atom_idx],
                     element=atom.type_symbol,
                     occupancy=atom.occupancy,
-                    b_factor=atom.b_factor or 0.0,
+                    b_factor=atom.b_factor,
                 )
             )
 
