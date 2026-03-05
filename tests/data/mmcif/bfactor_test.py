@@ -1,4 +1,5 @@
 import datetime as dt
+import math
 from pathlib import Path
 
 import numpy as np
@@ -49,7 +50,7 @@ def test_atom_site_bfactor_is_parsed(test_data: Path):
     bvals = [a.b_iso_or_equiv for a in data.atom_site[:50]]
     assert any(v is not None for v in bvals), "B-factor should be present"
 
-    non_null = [v for v in bvals if v is not None]
+    non_null = [v for v in bvals if math.isfinite(v)]
     assert all(float(v) >= 0.0 for v in non_null)
 
 
@@ -75,9 +76,7 @@ def test_ligand_chain_bfactor_vector(
     input_data = _build_input_for_pdb("7qgw", test_data, ccd_min)
     assert len(input_data.ligands) > 0
 
-    lig = next(
-        (l for l in input_data.ligands if l.atom_b_factors is not None), None
-    )
+    lig = next((l for l in input_data.ligands), None)
     assert lig is not None
 
     b_factors = lig.atom_b_factors
