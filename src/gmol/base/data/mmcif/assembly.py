@@ -646,8 +646,8 @@ class Assembly(LooseModel):
                 if scheme not in br_schemes:
                     np_schemes.add(scheme)
 
-        label_seqs: dict[ResidueId, int | None] = {
-            seqres.res_id: seqres.seq_id if chain.type.is_polymer else None
+        label_seqs: dict[ResidueId, int | str] = {
+            seqres.res_id: seqres.seq_id if chain.type.is_polymer else "."
             for chain in self.chains.values()
             for seqres in chain.seqres
             if seqres.res_id is not None
@@ -719,9 +719,7 @@ class Assembly(LooseModel):
                         ".",
                         atom.comp_id,
                         atom.chain_id,
-                        label_seqs[atom.residue_id]
-                        if label_seqs[atom.residue_id] is not None
-                        else ".",
+                        label_seqs[atom.residue_id],
                         atom.residue_id.seq_id,
                         atom.comp_id,
                         atom.chain_id,
@@ -828,9 +826,7 @@ class Assembly(LooseModel):
                         (ptnr1 := self.atoms[conn.src_idx]).atom_id,
                         ptnr1.comp_id,
                         ptnr1.chain_id,
-                        label_seqs[ptnr1.residue_id]
-                        if label_seqs[ptnr1.residue_id] is not None
-                        else ".",
+                        label_seqs[ptnr1.residue_id],
                         ptnr1.residue_id.seq_id,
                         ptnr1.comp_id,
                         ptnr1.chain_id,
@@ -839,9 +835,7 @@ class Assembly(LooseModel):
                         (ptnr2 := self.atoms[conn.dst_idx]).atom_id,
                         ptnr2.comp_id,
                         ptnr2.chain_id,
-                        label_seqs[ptnr2.residue_id]
-                        if label_seqs[ptnr2.residue_id] is not None
-                        else ".",
+                        label_seqs[ptnr2.residue_id],
                         ptnr2.residue_id.seq_id,
                         ptnr2.comp_id,
                         ptnr2.chain_id,
@@ -995,8 +989,8 @@ class Assembly(LooseModel):
                 if scheme not in branch_scheme:
                     nonpoly_scheme.add(scheme)
 
-        label_seqs: dict[ResidueId, int | None] = {
-            seqres.res_id: seqres.seq_id if chain.type.is_polymer else None
+        label_seqs: dict[ResidueId, int | str] = {
+            seqres.res_id: seqres.seq_id if chain.type.is_polymer else "."
             for seqres in chain.seqres
             if seqres.res_id is not None
         }
@@ -1041,9 +1035,7 @@ class Assembly(LooseModel):
                         atom.atom_id,
                         atom.comp_id,
                         atom.chain_id,
-                        label_seqs[atom.residue_id]
-                        if label_seqs[atom.residue_id] is not None
-                        else ".",
+                        label_seqs[atom.residue_id],
                         atom.residue_id.seq_id,
                         atom.residue_id.ins_code or ".",
                         f"{crd[0]:.3f}",
@@ -1142,17 +1134,13 @@ class Assembly(LooseModel):
                         (ptnr1 := self.atoms[conn.src_idx]).chain_id,
                         ptnr1.comp_id,
                         ptnr1.atom_id,
-                        label_seqs[ptnr1.residue_id]
-                        if label_seqs[ptnr1.residue_id] is not None
-                        else ".",
+                        label_seqs[ptnr1.residue_id],
                         ptnr1.residue_id.seq_id,
                         ptnr1.residue_id.ins_code or ".",
                         (ptnr2 := self.atoms[conn.dst_idx]).chain_id,
                         ptnr2.comp_id,
                         ptnr2.atom_id,
-                        label_seqs[ptnr2.residue_id]
-                        if label_seqs[ptnr2.residue_id] is not None
-                        else ".",
+                        label_seqs[ptnr2.residue_id],
                         ptnr2.residue_id.seq_id,
                         ptnr2.residue_id.ins_code or ".",
                     )
