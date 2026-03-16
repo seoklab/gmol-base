@@ -485,7 +485,7 @@ def _split_modified_residue(
     for aid in chain_consts.backbone:
         for n in graph[aid]:
             atom: ChemCompAtom = graph.nodes[n]["data"]
-            if atom.type_symbol in ("H", "D"):
+            if atom.type_symbol in "HD":
                 bb_all.add(n)
 
     only_sc = graph.copy(as_view=False)
