@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 from nuri.fmt import cif_ddl2_frame_as_dict, read_cif
 
-from gmol.base.data.mmcif import load_mmcif_single
+from gmol.base.data.mmcif import load_mmcif_single, mmcif_assemblies
 from gmol.base.data.mmcif.write import mmcif_write_block
 
 
@@ -142,3 +142,25 @@ def test_write_block_quotes_leading_single_quote_description_from_6akd(
 
     block = mmcif_write_block("entity", ["pdbx_description"], [(target,)])
     assert block.splitlines()[-1] == f'"{target}"'
+
+
+@pytest.mark.parametrize("pdb_id", ["7rtb", "7qgw", "6akd"])
+def test_assembly_to_mmcif_roundtrip_cif_parsing(
+    test_data: Path,
+    tmp_path,
+    ccd_components,
+    pdb_id: str,
+):
+    src = test_data / "mmcif" / f"{pdb_id}.cif"
+    mmcif = load_mmcif_single(src)
+    assemblies = mmcif_assemblies(mmcif, ccd_components)
+    assert assemblies
+
+    cif = assemblies[0].to_mmcif(pdb_id)
+    out = tmp_path / f"{pdb_id}_roundtrip.cif"
+    out.write_text(cif)
+
+    block = next(read_cif(out))
+    parsed = cif_ddl2_frame_as_dict(block.data)
+    assert "atom_site" in parsed
+    assert len(parsed["atom_site"]) > 0
