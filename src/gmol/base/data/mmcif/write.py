@@ -19,7 +19,6 @@ def mmcif_bool(pred: bool) -> str:
 _RESERVED_PREFIXES = ("data_", "save_")
 _RESERVED_EXACT = frozenset({"loop_", "stop_", "global_"})
 _RESERVED_START_CHARS = frozenset("_#$[];'\"")
-_SPECIAL_VALUES = frozenset({"?", "."})
 
 
 def _mmcif_text_field(v: str) -> str:
@@ -36,8 +35,6 @@ def _needs_quoted(v: str) -> bool:
         return True
 
     lower = v.lower()
-    if lower in _SPECIAL_VALUES:
-        return True
 
     return (
         any(c.isspace() for c in v)

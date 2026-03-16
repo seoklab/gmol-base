@@ -44,9 +44,11 @@ def test_write_block_quotes_reserved_starts(tmp_path, value: str):
 
 
 @pytest.mark.parametrize("value", [".", "?"])
-def test_write_block_quotes_special_unknown_tokens(tmp_path, value: str):
+def test_write_block_keeps_special_unknown_tokens_as_nulls(
+    tmp_path, value: str
+):
     parsed = _parse_block(tmp_path, ["v"], [(value,)])
-    assert parsed == [{"v": value}]
+    assert parsed == [{"v": None}]
 
 
 @pytest.mark.parametrize("value", ["'start", '"start'])
