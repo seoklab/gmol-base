@@ -1,3 +1,10 @@
+"""This module is written to follow the syntax rules in the reference below.
+
+Reference:
+    CIF 1.1 syntax (general):
+    https://www.iucr.org/resources/cif/spec/version1.1/cifsyntax#general
+"""
+
 from collections.abc import Sequence
 
 
