@@ -145,16 +145,24 @@ class Scheme(LooseModel):
         if not isinstance(other, Scheme):
             return False
 
-        return self.asym_id == other.asym_id and self.seq_id == other.seq_id
+        return (
+            self.asym_id == other.asym_id
+            and self.seq_id == other.seq_id
+            and self.mon_id == other.mon_id
+        )
 
     def __lt__(self, other):
         if not isinstance(other, Scheme):
             return NotImplemented
 
-        return (self.asym_id, self.seq_id) < (other.asym_id, other.seq_id)
+        return (self.asym_id, self.seq_id, self.mon_id) < (
+            other.asym_id,
+            other.seq_id,
+            other.mon_id,
+        )
 
     def __hash__(self):
-        return hash((self.asym_id, self.seq_id))
+        return hash((self.asym_id, self.seq_id, self.mon_id))
 
 
 class AtomSite(LooseModel):
