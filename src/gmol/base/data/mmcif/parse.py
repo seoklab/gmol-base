@@ -185,7 +185,7 @@ class AtomSite(LooseModel):
 
     @property
     def is_hydrogen(self):
-        return self.type_symbol == "H"
+        return self.type_symbol in ("H", "D")
 
     @field_validator("b_iso_or_equiv", mode="before")
     @staticmethod
