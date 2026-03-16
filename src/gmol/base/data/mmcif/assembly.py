@@ -1680,7 +1680,7 @@ def _prepare_initial_assemblies(
 ) -> list[Assembly]:
     atom_sites_model: dict[int, list[AtomSite]] = defaultdict(list)
     for atom_site in metadata.atom_site:
-        if atom_site.type_symbol == "H":
+        if atom_site.type_symbol in "HD":
             continue
 
         atom_sites_model[atom_site.pdbx_PDB_model_num].append(atom_site)
