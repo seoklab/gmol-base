@@ -51,6 +51,11 @@ def test_write_block_keeps_special_unknown_tokens_as_nulls(
     assert parsed == [{"v": None}]
 
 
+def test_write_block_quotes_empty_string(tmp_path):
+    parsed = _parse_block(tmp_path, ["v"], [("",)])
+    assert parsed == [{"v": ""}]
+
+
 @pytest.mark.parametrize("value", ["'start", '"start'])
 def test_write_block_quotes_values_starting_with_quote(tmp_path, value: str):
     parsed = _parse_block(tmp_path, ["v"], [(value,)])
@@ -84,6 +89,11 @@ def test_write_block_serializes_multiline_values(tmp_path):
 def test_write_block_rejects_unencodable_multiline_values():
     with pytest.raises(ValueError, match="starts with ';'"):
         mmcif_write_block("test", ["v"], [("line1\n;line2",)])
+
+
+def test_write_block_rejects_row_length_mismatch():
+    with pytest.raises(ValueError, match="Row length does not match"):
+        mmcif_write_block("test", ["v1", "v2"], [("only_one",)])
 
 
 @pytest.mark.parametrize("value", ["loop_foo", "stop_foo", "global_foo"])
