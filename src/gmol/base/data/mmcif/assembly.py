@@ -646,8 +646,8 @@ class Assembly(LooseModel):
                 if scheme not in br_schemes:
                     np_schemes.add(scheme)
 
-        label_seqs: dict[ResidueId, int] = {
-            seqres.res_id: seqres.seq_id
+        label_seqs: dict[ResidueId, int | str] = {
+            seqres.res_id: seqres.seq_id if chain.type.is_polymer else "."
             for chain in self.chains.values()
             for seqres in chain.seqres
             if seqres.res_id is not None
@@ -989,8 +989,8 @@ class Assembly(LooseModel):
                 if scheme not in branch_scheme:
                     nonpoly_scheme.add(scheme)
 
-        label_seqs = {
-            seqres.res_id: seqres.seq_id
+        label_seqs: dict[ResidueId, int | str] = {
+            seqres.res_id: seqres.seq_id if chain.type.is_polymer else "."
             for seqres in chain.seqres
             if seqres.res_id is not None
         }
