@@ -1,0 +1,1290 @@
+{
+  "GOL": {
+    "id": "GOL",
+    "name": "GLYCEROL",
+    "type": "non-polymer",
+    "formula": "C3 H8 O3",
+    "formula_weight": 92.094,
+    "mon_nstd_flag": null,
+    "atoms": [
+      {
+        "atom_id": "C1",
+        "type_symbol": "C",
+        "charge": 0.0,
+        "pdbx_aromatic_flag": false,
+        "pdbx_leaving_atom_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id": "O1",
+        "type_symbol": "O",
+        "charge": 0.0,
+        "pdbx_aromatic_flag": false,
+        "pdbx_leaving_atom_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id": "C2",
+        "type_symbol": "C",
+        "charge": 0.0,
+        "pdbx_aromatic_flag": false,
+        "pdbx_leaving_atom_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id": "O2",
+        "type_symbol": "O",
+        "charge": 0.0,
+        "pdbx_aromatic_flag": false,
+        "pdbx_leaving_atom_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id": "C3",
+        "type_symbol": "C",
+        "charge": 0.0,
+        "pdbx_aromatic_flag": false,
+        "pdbx_leaving_atom_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id": "O3",
+        "type_symbol": "O",
+        "charge": 0.0,
+        "pdbx_aromatic_flag": false,
+        "pdbx_leaving_atom_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id": "H11",
+        "type_symbol": "H",
+        "charge": 0.0,
+        "pdbx_aromatic_flag": false,
+        "pdbx_leaving_atom_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id": "H12",
+        "type_symbol": "H",
+        "charge": 0.0,
+        "pdbx_aromatic_flag": false,
+        "pdbx_leaving_atom_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id": "HO1",
+        "type_symbol": "H",
+        "charge": 0.0,
+        "pdbx_aromatic_flag": false,
+        "pdbx_leaving_atom_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id": "H2",
+        "type_symbol": "H",
+        "charge": 0.0,
+        "pdbx_aromatic_flag": false,
+        "pdbx_leaving_atom_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id": "HO2",
+        "type_symbol": "H",
+        "charge": 0.0,
+        "pdbx_aromatic_flag": false,
+        "pdbx_leaving_atom_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id": "H31",
+        "type_symbol": "H",
+        "charge": 0.0,
+        "pdbx_aromatic_flag": false,
+        "pdbx_leaving_atom_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id": "H32",
+        "type_symbol": "H",
+        "charge": 0.0,
+        "pdbx_aromatic_flag": false,
+        "pdbx_leaving_atom_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id": "HO3",
+        "type_symbol": "H",
+        "charge": 0.0,
+        "pdbx_aromatic_flag": false,
+        "pdbx_leaving_atom_flag": false,
+        "pdbx_stereo_config": null
+      }
+    ],
+    "bonds": [
+      {
+        "atom_id_1": "C1",
+        "atom_id_2": "O1",
+        "value_order": 1,
+        "pdbx_aromatic_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id_1": "C1",
+        "atom_id_2": "C2",
+        "value_order": 1,
+        "pdbx_aromatic_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id_1": "C1",
+        "atom_id_2": "H11",
+        "value_order": 1,
+        "pdbx_aromatic_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id_1": "C1",
+        "atom_id_2": "H12",
+        "value_order": 1,
+        "pdbx_aromatic_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id_1": "O1",
+        "atom_id_2": "HO1",
+        "value_order": 1,
+        "pdbx_aromatic_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id_1": "C2",
+        "atom_id_2": "O2",
+        "value_order": 1,
+        "pdbx_aromatic_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id_1": "C2",
+        "atom_id_2": "C3",
+        "value_order": 1,
+        "pdbx_aromatic_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id_1": "C2",
+        "atom_id_2": "H2",
+        "value_order": 1,
+        "pdbx_aromatic_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id_1": "O2",
+        "atom_id_2": "HO2",
+        "value_order": 1,
+        "pdbx_aromatic_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id_1": "C3",
+        "atom_id_2": "O3",
+        "value_order": 1,
+        "pdbx_aromatic_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id_1": "C3",
+        "atom_id_2": "H31",
+        "value_order": 1,
+        "pdbx_aromatic_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id_1": "C3",
+        "atom_id_2": "H32",
+        "value_order": 1,
+        "pdbx_aromatic_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id_1": "O3",
+        "atom_id_2": "HO3",
+        "value_order": 1,
+        "pdbx_aromatic_flag": false,
+        "pdbx_stereo_config": null
+      }
+    ]
+  },
+  "HOH": {
+    "id": "HOH",
+    "name": "WATER",
+    "type": "non-polymer",
+    "formula": "H2 O",
+    "formula_weight": 18.015,
+    "mon_nstd_flag": null,
+    "atoms": [
+      {
+        "atom_id": "O",
+        "type_symbol": "O",
+        "charge": 0.0,
+        "pdbx_aromatic_flag": false,
+        "pdbx_leaving_atom_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id": "H1",
+        "type_symbol": "H",
+        "charge": 0.0,
+        "pdbx_aromatic_flag": false,
+        "pdbx_leaving_atom_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id": "H2",
+        "type_symbol": "H",
+        "charge": 0.0,
+        "pdbx_aromatic_flag": false,
+        "pdbx_leaving_atom_flag": false,
+        "pdbx_stereo_config": null
+      }
+    ],
+    "bonds": [
+      {
+        "atom_id_1": "O",
+        "atom_id_2": "H1",
+        "value_order": 1,
+        "pdbx_aromatic_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id_1": "O",
+        "atom_id_2": "H2",
+        "value_order": 1,
+        "pdbx_aromatic_flag": false,
+        "pdbx_stereo_config": null
+      }
+    ]
+  },
+  "NA": {
+    "id": "NA",
+    "name": "SODIUM ION",
+    "type": "non-polymer",
+    "formula": "Na 1",
+    "formula_weight": 22.99,
+    "mon_nstd_flag": null,
+    "atoms": [
+      {
+        "atom_id": "NA",
+        "type_symbol": "Na",
+        "charge": 0.0,
+        "pdbx_aromatic_flag": false,
+        "pdbx_leaving_atom_flag": false,
+        "pdbx_stereo_config": null
+      }
+    ],
+    "bonds": []
+  },
+  "NAG": {
+    "id": "NAG",
+    "name": "2-acetamido-2-deoxy-beta-D-glucopyranose",
+    "type": "D-saccharide, beta linking",
+    "formula": "C8 H15 N O6",
+    "formula_weight": 221.208,
+    "mon_nstd_flag": null,
+    "atoms": [
+      {
+        "atom_id": "C1",
+        "type_symbol": "C",
+        "charge": 0.0,
+        "pdbx_aromatic_flag": false,
+        "pdbx_leaving_atom_flag": false,
+        "pdbx_stereo_config": "R"
+      },
+      {
+        "atom_id": "C2",
+        "type_symbol": "C",
+        "charge": 0.0,
+        "pdbx_aromatic_flag": false,
+        "pdbx_leaving_atom_flag": false,
+        "pdbx_stereo_config": "R"
+      },
+      {
+        "atom_id": "C3",
+        "type_symbol": "C",
+        "charge": 0.0,
+        "pdbx_aromatic_flag": false,
+        "pdbx_leaving_atom_flag": false,
+        "pdbx_stereo_config": "R"
+      },
+      {
+        "atom_id": "C4",
+        "type_symbol": "C",
+        "charge": 0.0,
+        "pdbx_aromatic_flag": false,
+        "pdbx_leaving_atom_flag": false,
+        "pdbx_stereo_config": "S"
+      },
+      {
+        "atom_id": "C5",
+        "type_symbol": "C",
+        "charge": 0.0,
+        "pdbx_aromatic_flag": false,
+        "pdbx_leaving_atom_flag": false,
+        "pdbx_stereo_config": "R"
+      },
+      {
+        "atom_id": "C6",
+        "type_symbol": "C",
+        "charge": 0.0,
+        "pdbx_aromatic_flag": false,
+        "pdbx_leaving_atom_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id": "C7",
+        "type_symbol": "C",
+        "charge": 0.0,
+        "pdbx_aromatic_flag": false,
+        "pdbx_leaving_atom_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id": "C8",
+        "type_symbol": "C",
+        "charge": 0.0,
+        "pdbx_aromatic_flag": false,
+        "pdbx_leaving_atom_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id": "N2",
+        "type_symbol": "N",
+        "charge": 0.0,
+        "pdbx_aromatic_flag": false,
+        "pdbx_leaving_atom_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id": "O1",
+        "type_symbol": "O",
+        "charge": 0.0,
+        "pdbx_aromatic_flag": false,
+        "pdbx_leaving_atom_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id": "O3",
+        "type_symbol": "O",
+        "charge": 0.0,
+        "pdbx_aromatic_flag": false,
+        "pdbx_leaving_atom_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id": "O4",
+        "type_symbol": "O",
+        "charge": 0.0,
+        "pdbx_aromatic_flag": false,
+        "pdbx_leaving_atom_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id": "O5",
+        "type_symbol": "O",
+        "charge": 0.0,
+        "pdbx_aromatic_flag": false,
+        "pdbx_leaving_atom_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id": "O6",
+        "type_symbol": "O",
+        "charge": 0.0,
+        "pdbx_aromatic_flag": false,
+        "pdbx_leaving_atom_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id": "O7",
+        "type_symbol": "O",
+        "charge": 0.0,
+        "pdbx_aromatic_flag": false,
+        "pdbx_leaving_atom_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id": "H1",
+        "type_symbol": "H",
+        "charge": 0.0,
+        "pdbx_aromatic_flag": false,
+        "pdbx_leaving_atom_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id": "H2",
+        "type_symbol": "H",
+        "charge": 0.0,
+        "pdbx_aromatic_flag": false,
+        "pdbx_leaving_atom_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id": "H3",
+        "type_symbol": "H",
+        "charge": 0.0,
+        "pdbx_aromatic_flag": false,
+        "pdbx_leaving_atom_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id": "H4",
+        "type_symbol": "H",
+        "charge": 0.0,
+        "pdbx_aromatic_flag": false,
+        "pdbx_leaving_atom_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id": "H5",
+        "type_symbol": "H",
+        "charge": 0.0,
+        "pdbx_aromatic_flag": false,
+        "pdbx_leaving_atom_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id": "H61",
+        "type_symbol": "H",
+        "charge": 0.0,
+        "pdbx_aromatic_flag": false,
+        "pdbx_leaving_atom_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id": "H62",
+        "type_symbol": "H",
+        "charge": 0.0,
+        "pdbx_aromatic_flag": false,
+        "pdbx_leaving_atom_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id": "H81",
+        "type_symbol": "H",
+        "charge": 0.0,
+        "pdbx_aromatic_flag": false,
+        "pdbx_leaving_atom_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id": "H82",
+        "type_symbol": "H",
+        "charge": 0.0,
+        "pdbx_aromatic_flag": false,
+        "pdbx_leaving_atom_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id": "H83",
+        "type_symbol": "H",
+        "charge": 0.0,
+        "pdbx_aromatic_flag": false,
+        "pdbx_leaving_atom_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id": "HN2",
+        "type_symbol": "H",
+        "charge": 0.0,
+        "pdbx_aromatic_flag": false,
+        "pdbx_leaving_atom_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id": "HO1",
+        "type_symbol": "H",
+        "charge": 0.0,
+        "pdbx_aromatic_flag": false,
+        "pdbx_leaving_atom_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id": "HO3",
+        "type_symbol": "H",
+        "charge": 0.0,
+        "pdbx_aromatic_flag": false,
+        "pdbx_leaving_atom_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id": "HO4",
+        "type_symbol": "H",
+        "charge": 0.0,
+        "pdbx_aromatic_flag": false,
+        "pdbx_leaving_atom_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id": "HO6",
+        "type_symbol": "H",
+        "charge": 0.0,
+        "pdbx_aromatic_flag": false,
+        "pdbx_leaving_atom_flag": false,
+        "pdbx_stereo_config": null
+      }
+    ],
+    "bonds": [
+      {
+        "atom_id_1": "C1",
+        "atom_id_2": "C2",
+        "value_order": 1,
+        "pdbx_aromatic_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id_1": "C1",
+        "atom_id_2": "O1",
+        "value_order": 1,
+        "pdbx_aromatic_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id_1": "C1",
+        "atom_id_2": "O5",
+        "value_order": 1,
+        "pdbx_aromatic_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id_1": "C1",
+        "atom_id_2": "H1",
+        "value_order": 1,
+        "pdbx_aromatic_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id_1": "C2",
+        "atom_id_2": "C3",
+        "value_order": 1,
+        "pdbx_aromatic_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id_1": "C2",
+        "atom_id_2": "N2",
+        "value_order": 1,
+        "pdbx_aromatic_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id_1": "C2",
+        "atom_id_2": "H2",
+        "value_order": 1,
+        "pdbx_aromatic_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id_1": "C3",
+        "atom_id_2": "C4",
+        "value_order": 1,
+        "pdbx_aromatic_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id_1": "C3",
+        "atom_id_2": "O3",
+        "value_order": 1,
+        "pdbx_aromatic_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id_1": "C3",
+        "atom_id_2": "H3",
+        "value_order": 1,
+        "pdbx_aromatic_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id_1": "C4",
+        "atom_id_2": "C5",
+        "value_order": 1,
+        "pdbx_aromatic_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id_1": "C4",
+        "atom_id_2": "O4",
+        "value_order": 1,
+        "pdbx_aromatic_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id_1": "C4",
+        "atom_id_2": "H4",
+        "value_order": 1,
+        "pdbx_aromatic_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id_1": "C5",
+        "atom_id_2": "C6",
+        "value_order": 1,
+        "pdbx_aromatic_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id_1": "C5",
+        "atom_id_2": "O5",
+        "value_order": 1,
+        "pdbx_aromatic_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id_1": "C5",
+        "atom_id_2": "H5",
+        "value_order": 1,
+        "pdbx_aromatic_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id_1": "C6",
+        "atom_id_2": "O6",
+        "value_order": 1,
+        "pdbx_aromatic_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id_1": "C6",
+        "atom_id_2": "H61",
+        "value_order": 1,
+        "pdbx_aromatic_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id_1": "C6",
+        "atom_id_2": "H62",
+        "value_order": 1,
+        "pdbx_aromatic_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id_1": "C7",
+        "atom_id_2": "C8",
+        "value_order": 1,
+        "pdbx_aromatic_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id_1": "C7",
+        "atom_id_2": "N2",
+        "value_order": 1,
+        "pdbx_aromatic_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id_1": "C7",
+        "atom_id_2": "O7",
+        "value_order": 2,
+        "pdbx_aromatic_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id_1": "C8",
+        "atom_id_2": "H81",
+        "value_order": 1,
+        "pdbx_aromatic_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id_1": "C8",
+        "atom_id_2": "H82",
+        "value_order": 1,
+        "pdbx_aromatic_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id_1": "C8",
+        "atom_id_2": "H83",
+        "value_order": 1,
+        "pdbx_aromatic_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id_1": "N2",
+        "atom_id_2": "HN2",
+        "value_order": 1,
+        "pdbx_aromatic_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id_1": "O1",
+        "atom_id_2": "HO1",
+        "value_order": 1,
+        "pdbx_aromatic_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id_1": "O3",
+        "atom_id_2": "HO3",
+        "value_order": 1,
+        "pdbx_aromatic_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id_1": "O4",
+        "atom_id_2": "HO4",
+        "value_order": 1,
+        "pdbx_aromatic_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id_1": "O6",
+        "atom_id_2": "HO6",
+        "value_order": 1,
+        "pdbx_aromatic_flag": false,
+        "pdbx_stereo_config": null
+      }
+    ]
+  },
+  "NDG": {
+    "id": "NDG",
+    "name": "2-acetamido-2-deoxy-alpha-D-glucopyranose",
+    "type": "D-saccharide, alpha linking",
+    "formula": "C8 H15 N O6",
+    "formula_weight": 221.208,
+    "mon_nstd_flag": null,
+    "atoms": [
+      {
+        "atom_id": "C1",
+        "type_symbol": "C",
+        "charge": 0.0,
+        "pdbx_aromatic_flag": false,
+        "pdbx_leaving_atom_flag": false,
+        "pdbx_stereo_config": "S"
+      },
+      {
+        "atom_id": "C2",
+        "type_symbol": "C",
+        "charge": 0.0,
+        "pdbx_aromatic_flag": false,
+        "pdbx_leaving_atom_flag": false,
+        "pdbx_stereo_config": "R"
+      },
+      {
+        "atom_id": "C3",
+        "type_symbol": "C",
+        "charge": 0.0,
+        "pdbx_aromatic_flag": false,
+        "pdbx_leaving_atom_flag": false,
+        "pdbx_stereo_config": "R"
+      },
+      {
+        "atom_id": "C4",
+        "type_symbol": "C",
+        "charge": 0.0,
+        "pdbx_aromatic_flag": false,
+        "pdbx_leaving_atom_flag": false,
+        "pdbx_stereo_config": "S"
+      },
+      {
+        "atom_id": "C5",
+        "type_symbol": "C",
+        "charge": 0.0,
+        "pdbx_aromatic_flag": false,
+        "pdbx_leaving_atom_flag": false,
+        "pdbx_stereo_config": "R"
+      },
+      {
+        "atom_id": "C6",
+        "type_symbol": "C",
+        "charge": 0.0,
+        "pdbx_aromatic_flag": false,
+        "pdbx_leaving_atom_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id": "C7",
+        "type_symbol": "C",
+        "charge": 0.0,
+        "pdbx_aromatic_flag": false,
+        "pdbx_leaving_atom_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id": "C8",
+        "type_symbol": "C",
+        "charge": 0.0,
+        "pdbx_aromatic_flag": false,
+        "pdbx_leaving_atom_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id": "O5",
+        "type_symbol": "O",
+        "charge": 0.0,
+        "pdbx_aromatic_flag": false,
+        "pdbx_leaving_atom_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id": "O3",
+        "type_symbol": "O",
+        "charge": 0.0,
+        "pdbx_aromatic_flag": false,
+        "pdbx_leaving_atom_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id": "O4",
+        "type_symbol": "O",
+        "charge": 0.0,
+        "pdbx_aromatic_flag": false,
+        "pdbx_leaving_atom_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id": "O6",
+        "type_symbol": "O",
+        "charge": 0.0,
+        "pdbx_aromatic_flag": false,
+        "pdbx_leaving_atom_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id": "O7",
+        "type_symbol": "O",
+        "charge": 0.0,
+        "pdbx_aromatic_flag": false,
+        "pdbx_leaving_atom_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id": "N2",
+        "type_symbol": "N",
+        "charge": 0.0,
+        "pdbx_aromatic_flag": false,
+        "pdbx_leaving_atom_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id": "O1",
+        "type_symbol": "O",
+        "charge": 0.0,
+        "pdbx_aromatic_flag": false,
+        "pdbx_leaving_atom_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id": "H1",
+        "type_symbol": "H",
+        "charge": 0.0,
+        "pdbx_aromatic_flag": false,
+        "pdbx_leaving_atom_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id": "H2",
+        "type_symbol": "H",
+        "charge": 0.0,
+        "pdbx_aromatic_flag": false,
+        "pdbx_leaving_atom_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id": "H3",
+        "type_symbol": "H",
+        "charge": 0.0,
+        "pdbx_aromatic_flag": false,
+        "pdbx_leaving_atom_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id": "H4",
+        "type_symbol": "H",
+        "charge": 0.0,
+        "pdbx_aromatic_flag": false,
+        "pdbx_leaving_atom_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id": "H5",
+        "type_symbol": "H",
+        "charge": 0.0,
+        "pdbx_aromatic_flag": false,
+        "pdbx_leaving_atom_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id": "H61",
+        "type_symbol": "H",
+        "charge": 0.0,
+        "pdbx_aromatic_flag": false,
+        "pdbx_leaving_atom_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id": "H62",
+        "type_symbol": "H",
+        "charge": 0.0,
+        "pdbx_aromatic_flag": false,
+        "pdbx_leaving_atom_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id": "H81",
+        "type_symbol": "H",
+        "charge": 0.0,
+        "pdbx_aromatic_flag": false,
+        "pdbx_leaving_atom_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id": "H82",
+        "type_symbol": "H",
+        "charge": 0.0,
+        "pdbx_aromatic_flag": false,
+        "pdbx_leaving_atom_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id": "H83",
+        "type_symbol": "H",
+        "charge": 0.0,
+        "pdbx_aromatic_flag": false,
+        "pdbx_leaving_atom_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id": "HO3",
+        "type_symbol": "H",
+        "charge": 0.0,
+        "pdbx_aromatic_flag": false,
+        "pdbx_leaving_atom_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id": "HO4",
+        "type_symbol": "H",
+        "charge": 0.0,
+        "pdbx_aromatic_flag": false,
+        "pdbx_leaving_atom_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id": "HO6",
+        "type_symbol": "H",
+        "charge": 0.0,
+        "pdbx_aromatic_flag": false,
+        "pdbx_leaving_atom_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id": "HN2",
+        "type_symbol": "H",
+        "charge": 0.0,
+        "pdbx_aromatic_flag": false,
+        "pdbx_leaving_atom_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id": "HO1",
+        "type_symbol": "H",
+        "charge": 0.0,
+        "pdbx_aromatic_flag": false,
+        "pdbx_leaving_atom_flag": false,
+        "pdbx_stereo_config": null
+      }
+    ],
+    "bonds": [
+      {
+        "atom_id_1": "C1",
+        "atom_id_2": "C2",
+        "value_order": 1,
+        "pdbx_aromatic_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id_1": "C1",
+        "atom_id_2": "O5",
+        "value_order": 1,
+        "pdbx_aromatic_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id_1": "C1",
+        "atom_id_2": "O1",
+        "value_order": 1,
+        "pdbx_aromatic_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id_1": "C1",
+        "atom_id_2": "H1",
+        "value_order": 1,
+        "pdbx_aromatic_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id_1": "C2",
+        "atom_id_2": "C3",
+        "value_order": 1,
+        "pdbx_aromatic_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id_1": "C2",
+        "atom_id_2": "N2",
+        "value_order": 1,
+        "pdbx_aromatic_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id_1": "C2",
+        "atom_id_2": "H2",
+        "value_order": 1,
+        "pdbx_aromatic_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id_1": "C3",
+        "atom_id_2": "C4",
+        "value_order": 1,
+        "pdbx_aromatic_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id_1": "C3",
+        "atom_id_2": "O3",
+        "value_order": 1,
+        "pdbx_aromatic_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id_1": "C3",
+        "atom_id_2": "H3",
+        "value_order": 1,
+        "pdbx_aromatic_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id_1": "C4",
+        "atom_id_2": "C5",
+        "value_order": 1,
+        "pdbx_aromatic_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id_1": "C4",
+        "atom_id_2": "O4",
+        "value_order": 1,
+        "pdbx_aromatic_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id_1": "C4",
+        "atom_id_2": "H4",
+        "value_order": 1,
+        "pdbx_aromatic_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id_1": "C5",
+        "atom_id_2": "C6",
+        "value_order": 1,
+        "pdbx_aromatic_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id_1": "C5",
+        "atom_id_2": "O5",
+        "value_order": 1,
+        "pdbx_aromatic_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id_1": "C5",
+        "atom_id_2": "H5",
+        "value_order": 1,
+        "pdbx_aromatic_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id_1": "C6",
+        "atom_id_2": "O6",
+        "value_order": 1,
+        "pdbx_aromatic_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id_1": "C6",
+        "atom_id_2": "H61",
+        "value_order": 1,
+        "pdbx_aromatic_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id_1": "C6",
+        "atom_id_2": "H62",
+        "value_order": 1,
+        "pdbx_aromatic_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id_1": "C7",
+        "atom_id_2": "C8",
+        "value_order": 1,
+        "pdbx_aromatic_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id_1": "C7",
+        "atom_id_2": "O7",
+        "value_order": 2,
+        "pdbx_aromatic_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id_1": "C7",
+        "atom_id_2": "N2",
+        "value_order": 1,
+        "pdbx_aromatic_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id_1": "C8",
+        "atom_id_2": "H81",
+        "value_order": 1,
+        "pdbx_aromatic_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id_1": "C8",
+        "atom_id_2": "H82",
+        "value_order": 1,
+        "pdbx_aromatic_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id_1": "C8",
+        "atom_id_2": "H83",
+        "value_order": 1,
+        "pdbx_aromatic_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id_1": "O3",
+        "atom_id_2": "HO3",
+        "value_order": 1,
+        "pdbx_aromatic_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id_1": "O4",
+        "atom_id_2": "HO4",
+        "value_order": 1,
+        "pdbx_aromatic_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id_1": "O6",
+        "atom_id_2": "HO6",
+        "value_order": 1,
+        "pdbx_aromatic_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id_1": "N2",
+        "atom_id_2": "HN2",
+        "value_order": 1,
+        "pdbx_aromatic_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id_1": "O1",
+        "atom_id_2": "HO1",
+        "value_order": 1,
+        "pdbx_aromatic_flag": false,
+        "pdbx_stereo_config": null
+      }
+    ]
+  },
+  "SO4": {
+    "id": "SO4",
+    "name": "SULFATE ION",
+    "type": "non-polymer",
+    "formula": "O4 S -2",
+    "formula_weight": 96.063,
+    "mon_nstd_flag": null,
+    "atoms": [
+      {
+        "atom_id": "S",
+        "type_symbol": "S",
+        "charge": 0.0,
+        "pdbx_aromatic_flag": false,
+        "pdbx_leaving_atom_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id": "O1",
+        "type_symbol": "O",
+        "charge": 0.0,
+        "pdbx_aromatic_flag": false,
+        "pdbx_leaving_atom_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id": "O2",
+        "type_symbol": "O",
+        "charge": 0.0,
+        "pdbx_aromatic_flag": false,
+        "pdbx_leaving_atom_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id": "O3",
+        "type_symbol": "O",
+        "charge": 0.0,
+        "pdbx_aromatic_flag": false,
+        "pdbx_leaving_atom_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id": "O4",
+        "type_symbol": "O",
+        "charge": 0.0,
+        "pdbx_aromatic_flag": false,
+        "pdbx_leaving_atom_flag": false,
+        "pdbx_stereo_config": null
+      }
+    ],
+    "bonds": [
+      {
+        "atom_id_1": "S",
+        "atom_id_2": "O1",
+        "value_order": 2,
+        "pdbx_aromatic_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id_1": "S",
+        "atom_id_2": "O2",
+        "value_order": 2,
+        "pdbx_aromatic_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id_1": "S",
+        "atom_id_2": "O3",
+        "value_order": 1,
+        "pdbx_aromatic_flag": false,
+        "pdbx_stereo_config": null
+      },
+      {
+        "atom_id_1": "S",
+        "atom_id_2": "O4",
+        "value_order": 1,
+        "pdbx_aromatic_flag": false,
+        "pdbx_stereo_config": null
+      }
+    ]
+  }
+}

@@ -1548,16 +1548,16 @@ def _map_branches(
     br_links: list[BranchLink],
     residues: dict[ResidueId, Residue],
 ):
-    schemes = {scheme.seq_id: scheme for scheme in br_schemes}
+    schemes = {(scheme.seq_id, scheme.mon_id): scheme for scheme in br_schemes}
 
     branches = []
     for link in br_links:
         ptnr1 = BranchPartner.from_branch_scheme(
-            schemes[link.ptnr1.entity_branch_list_num],
+            schemes[(link.ptnr1.entity_branch_list_num, link.ptnr1.comp_id)],
             link.ptnr1,
         )
         ptnr2 = BranchPartner.from_branch_scheme(
-            schemes[link.ptnr2.entity_branch_list_num],
+            schemes[(link.ptnr2.entity_branch_list_num, link.ptnr2.comp_id)],
             link.ptnr2,
         )
         if (
