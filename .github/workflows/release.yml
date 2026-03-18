@@ -76,7 +76,7 @@ jobs:
           repository-url: ${{ github.event_name == 'push' && 'https://upload.pypi.org/legacy/' || 'https://test.pypi.org/legacy/' }}
           skip-existing: ${{ github.event_name == 'workflow_dispatch' }}
 
-      - id: prerelease-check
+      - id: release-meta
         run: |
           regex='((a|b|rc)([[:digit:]]+\.post)?|\.dev)[[:digit:]]+$'
 
@@ -94,7 +94,13 @@ jobs:
           files: "dist/*"
           fail_on_unmatched_files: true
           generate_release_notes: true
-          prerelease: ${{ steps.prerelease-check.outputs.prerelease == 'true' }}
+          prerelease: ${{ fromJSON(steps.release-meta.outputs.prerelease) }}
+          draft: ${{ fromJSON(steps.release-meta.outputs.prerelease) }}
+
+      - if: ${{ github.event_name == 'push' && fromJSON(steps.release-meta.outputs.prerelease) }}
+        run: gh release edit "$GITHUB_REF_NAME" --draft=false --prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
 
 concurrency:
   group: release-${{ github.event_name }}-${{ github.workflow }}-${{ github.ref }}
