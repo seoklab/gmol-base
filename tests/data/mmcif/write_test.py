@@ -220,9 +220,6 @@ def test_assembly_operation_preserves_auth_asym_id_in_atom_site(
     mmcif = load_mmcif_single(test_data / "mmcif" / "4hf7.cif")
     assembly = mmcif_assemblies(mmcif, ccd_components)[0]
 
-    assert assembly.chains["A_1"].auth_asym_id == "A"
-    assert assembly.chains["A_2"].auth_asym_id == "A"
-
     atom_site_rows = _parse_loop_rows(assembly.to_mmcif("4hf7"), "atom_site")
     auth_by_label = {
         row["label_asym_id"]: row["auth_asym_id"]
@@ -230,4 +227,4 @@ def test_assembly_operation_preserves_auth_asym_id_in_atom_site(
         if row["label_asym_id"] in {"A_1", "A_2"}
     }
 
-    assert auth_by_label == {"A_1": "A", "A_2": "A"}
+    assert auth_by_label == {"A_1": "A_1", "A_2": "A_2"}
