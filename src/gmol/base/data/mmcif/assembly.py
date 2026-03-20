@@ -726,7 +726,7 @@ class Assembly(LooseModel):
                         label_seqs[atom.residue_id],
                         atom.residue_id.seq_id,
                         atom.comp_id,
-                        atom.chain_id,
+                        self.chains[atom.chain_id].auth_asym_id,
                         atom.residue_id.ins_code or ".",
                         1,
                         f"{crd[0]:.3f}",
@@ -833,7 +833,7 @@ class Assembly(LooseModel):
                         label_seqs[ptnr1.residue_id],
                         ptnr1.residue_id.seq_id,
                         ptnr1.comp_id,
-                        ptnr1.chain_id,
+                        self.chains[ptnr1.chain_id].auth_asym_id,
                         ptnr1.residue_id.ins_code or ".",
                         "1_555",  # identity placeholder
                         (ptnr2 := self.atoms[conn.dst_idx]).atom_id,
@@ -842,7 +842,7 @@ class Assembly(LooseModel):
                         label_seqs[ptnr2.residue_id],
                         ptnr2.residue_id.seq_id,
                         ptnr2.comp_id,
-                        ptnr2.chain_id,
+                        self.chains[ptnr2.chain_id].auth_asym_id,
                         ptnr2.residue_id.ins_code or ".",
                         "1_555",  # identity placeholder
                     )
