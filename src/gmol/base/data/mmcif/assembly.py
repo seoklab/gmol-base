@@ -192,7 +192,7 @@ class Branch:
 class Chain:
     chain_id: str
 
-    auth_asym_id: str
+    auth_asym_id: str = field(compare=False)
 
     entity_id: int = field(compare=False)
     type: MolType = field(compare=False)
