@@ -724,7 +724,7 @@ class Assembly(LooseModel):
                         atom.comp_id,
                         atom.chain_id,
                         label_seqs[atom.residue_id],
-                        atom.residue_id.seq_id,
+                        atom.chain_id,
                         atom.comp_id,
                         self.chains[atom.chain_id].auth_asym_id,
                         atom.residue_id.ins_code or ".",
@@ -833,7 +833,7 @@ class Assembly(LooseModel):
                         label_seqs[ptnr1.residue_id],
                         ptnr1.residue_id.seq_id,
                         ptnr1.comp_id,
-                        self.chains[ptnr1.chain_id].auth_asym_id,
+                        ptnr1.chain_id,
                         ptnr1.residue_id.ins_code or ".",
                         "1_555",  # identity placeholder
                         (ptnr2 := self.atoms[conn.dst_idx]).atom_id,
@@ -842,7 +842,7 @@ class Assembly(LooseModel):
                         label_seqs[ptnr2.residue_id],
                         ptnr2.residue_id.seq_id,
                         ptnr2.comp_id,
-                        self.chains[ptnr2.chain_id].auth_asym_id,
+                        ptnr2.chain_id,
                         ptnr2.residue_id.ins_code or ".",
                         "1_555",  # identity placeholder
                     )
@@ -1622,12 +1622,7 @@ def _model_assembly(
         for i, atom_site in enumerate(atom_sites)
     ]
 
-    auth_asym_by_label: dict[str, str] = {}
-    for atom_site in atom_sites:
-        auth_asym_by_label.setdefault(
-            atom_site.label_asym_id,
-            atom_site.auth_asym_id,
-        )
+    auth_asym_by_label = {s.label_asym_id: s.auth_asym_id for s in atom_sites}
 
     residues: dict[ResidueId, Residue] = {}
     chains: dict[str, Chain] = {}
