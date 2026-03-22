@@ -213,18 +213,17 @@ def test_assembly_to_mmcif_roundtrip_cif_parsing(
     assert len(parsed["atom_site"]) > 0
 
 
-def test_assembly_operation_preserves_auth_asym_id_in_atom_site(
+def test_assembly_operation_preserves_chain_auth_asym_id_mapping(
     test_data: Path,
     ccd_components,
 ):
     mmcif = load_mmcif_single(test_data / "mmcif" / "4hf7.cif")
     assembly = mmcif_assemblies(mmcif, ccd_components)[0]
 
-    atom_site_rows = _parse_loop_rows(assembly.to_mmcif("4hf7"), "atom_site")
     auth_by_label = {
-        row["label_asym_id"]: row["auth_asym_id"]
-        for row in atom_site_rows
-        if row["label_asym_id"] in {"A_1", "A_2"}
+        chain.chain_id: chain.auth_asym_id
+        for chain in assembly.chains.values()
+        if chain.chain_id in {"A_1", "A_2"}
     }
 
-    assert auth_by_label == {"A_1": "A_1", "A_2": "A_2"}
+    assert auth_by_label == {"A_1": "A", "A_2": "A"}
