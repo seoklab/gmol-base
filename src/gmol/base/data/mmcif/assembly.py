@@ -192,6 +192,8 @@ class Branch:
 class Chain:
     chain_id: str
 
+    auth_asym_id: str = field(compare=False)
+
     entity_id: int = field(compare=False)
     type: MolType = field(compare=False)
 
@@ -215,6 +217,7 @@ class Chain:
     def new_chain(self, residue_ids: list[ResidueId], atom_idxs: list[int]):
         chain = Chain(
             self.chain_id,
+            self.auth_asym_id,
             self.entity_id,
             self.type,
             deepcopy(self.seqres),
@@ -228,6 +231,7 @@ class Chain:
     def with_updates(self, offset: int, suffix: str):
         return Chain(
             self.chain_id + suffix,
+            self.auth_asym_id,
             self.entity_id,
             self.type,
             [seqres.with_chain_suffix(suffix) for seqres in self.seqres],
@@ -1308,8 +1312,7 @@ class Assembly(LooseModel):
             if idx != atom.atom_idx:
                 raise ValueError(
                     (
-                        f"Duplicate atom name {atom_name!r} "
-                        f"in residue {atom.residue_id}"
+                        f"Duplicate atom name {atom_name!r} in residue {atom.residue_id}"
                     )
                 )
 
@@ -1619,6 +1622,8 @@ def _model_assembly(
         for i, atom_site in enumerate(atom_sites)
     ]
 
+    auth_asym_by_label = {s.label_asym_id: s.auth_asym_id for s in atom_sites}
+
     residues: dict[ResidueId, Residue] = {}
     chains: dict[str, Chain] = {}
 
@@ -1629,6 +1634,7 @@ def _model_assembly(
             atom.chain_id,
             Chain(
                 atom.chain_id,
+                auth_asym_by_label[atom.chain_id],
                 metadata.struct_asym[atom.chain_id],
                 chain_types[atom.chain_id],
             ),

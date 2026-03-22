@@ -22,6 +22,41 @@ def _parse_block(
     return parsed["test"]
 
 
+def _parse_loop_rows(cif_text: str, block_name: str) -> list[dict[str, str]]:
+    in_block = False
+    field_names: list[str] = []
+    rows: list[dict[str, str]] = []
+
+    for line in cif_text.splitlines():
+        line = line.strip()
+
+        if line == "loop_":
+            in_block = False
+            field_names = []
+            continue
+
+        if line.startswith(f"_{block_name}."):
+            in_block = True
+            field_names.append(line.split(".", 1)[1])
+            continue
+
+        if (
+            in_block
+            and field_names
+            and line
+            and not line.startswith("_")
+            and not line.startswith("#")
+        ):
+            tokens = line.split()
+            if len(tokens) >= len(field_names):
+                rows.append(dict(zip(field_names, tokens)))
+
+        if line.startswith("#") and in_block:
+            in_block = False
+
+    return rows
+
+
 @pytest.mark.parametrize(
     "value",
     [
@@ -176,3 +211,19 @@ def test_assembly_to_mmcif_roundtrip_cif_parsing(
     parsed = cif_ddl2_frame_as_dict(block.data)
     assert "atom_site" in parsed
     assert len(parsed["atom_site"]) > 0
+
+
+def test_assembly_operation_preserves_chain_auth_asym_id_mapping(
+    test_data: Path,
+    ccd_components,
+):
+    mmcif = load_mmcif_single(test_data / "mmcif" / "4hf7.cif")
+    assembly = mmcif_assemblies(mmcif, ccd_components)[0]
+
+    auth_by_label = {
+        chain.chain_id: chain.auth_asym_id
+        for chain in assembly.chains.values()
+        if chain.chain_id in {"A_1", "A_2"}
+    }
+
+    assert auth_by_label == {"A_1": "A", "A_2": "A"}
