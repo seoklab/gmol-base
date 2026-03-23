@@ -267,6 +267,8 @@ class AssemblyAtom:
     occupancy: float
     b_factor: float
 
+    label_alt_id: str | None = None
+
     @property
     def chain_id(self) -> str:
         return self.residue_id.chain_id
@@ -280,6 +282,7 @@ class AssemblyAtom:
             comp_id=self.comp_id,
             occupancy=self.occupancy,
             b_factor=self.b_factor,
+            label_alt_id=self.label_alt_id,
         )
 
     def with_updates(self, idx: int, chain_suffix: str):
@@ -291,6 +294,7 @@ class AssemblyAtom:
             comp_id=self.comp_id,
             occupancy=self.occupancy,
             b_factor=self.b_factor,
+            label_alt_id=self.label_alt_id,
         )
 
 
@@ -366,6 +370,7 @@ class _PdbAtom:
     element: str
     occupancy: float
     b_factor: float
+    alt_id: str = " "
 
     def __post_init__(self):
         assert len(self.record) == 6
@@ -374,12 +379,13 @@ class _PdbAtom:
         assert len(self.res_id.ins_code) <= 1
         assert len(self.res_name) <= 3
         assert len(self.element) <= 2
+        assert len(self.alt_id) == 1
 
     def to_pdb_line(self, serial: int):
         b = self.b_factor if math.isfinite(self.b_factor) else 0.0
         return (
             # 1-21
-            f"{self.record}{serial:>5} {self.name} {self.res_name:>3} "
+            f"{self.record}{serial:>5} {self.name}{self.alt_id}{self.res_name:>3} "
             # 22-27
             f"{self.res_id.chain_id}{self.res_id.seq_id:4d}{self.res_id.ins_code:1}"
             # 28-54
@@ -720,7 +726,7 @@ class Assembly(LooseModel):
                         atom.type_symbol,
                         "ATOM",
                         atom.atom_id,
-                        ".",
+                        atom.label_alt_id or ".",
                         atom.comp_id,
                         atom.chain_id,
                         label_seqs[atom.residue_id],
@@ -1023,6 +1029,7 @@ class Assembly(LooseModel):
                     "id",
                     "type_symbol",
                     "label_atom_id",
+                    "label_alt_id",
                     "label_comp_id",
                     "label_asym_id",
                     "label_seq_id",
@@ -1037,6 +1044,7 @@ class Assembly(LooseModel):
                         atom.atom_idx,
                         atom.type_symbol,
                         atom.atom_id,
+                        atom.label_alt_id or ".",
                         atom.comp_id,
                         atom.chain_id,
                         label_seqs[atom.residue_id],
@@ -1368,6 +1376,7 @@ class Assembly(LooseModel):
                     element=atom.type_symbol,
                     occupancy=atom.occupancy,
                     b_factor=atom.b_factor,
+                    alt_id=atom.label_alt_id or " ",
                 )
             )
 
@@ -1618,6 +1627,7 @@ def _model_assembly(
             comp_id=atom_site.label_comp_id,
             occupancy=atom_site.occupancy,
             b_factor=atom_site.b_iso_or_equiv,
+            label_alt_id=atom_site.label_alt_id,
         )
         for i, atom_site in enumerate(atom_sites)
     ]
