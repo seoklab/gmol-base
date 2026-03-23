@@ -1458,11 +1458,18 @@ def _select_altlocs(atom_sites: list[AtomSite]):
             atom.label_atom_id
         ].append(atom)
 
-    return [
-        atom
-        for residue_altlocs in altlocs.values()
-        for atom in _resolve_residue_altloc_consistent(residue_altlocs)
-    ]
+    result: list[AtomSite] = []
+    for residue_altlocs in altlocs.values():
+        within_res_altlocs = any(
+            len(alt_atoms) > 1 for alt_atoms in residue_altlocs.values()
+        )
+
+        for atom in _resolve_residue_altloc_consistent(residue_altlocs):
+            if within_res_altlocs and atom.label_alt_id is not None:
+                atom.label_alt_id = None
+            result.append(atom)
+
+    return result
 
 
 def residue_mol_type(chem_comp: ChemComp) -> MolType:
