@@ -263,7 +263,7 @@ class AssemblyAtom:
     type_symbol: str
     atom_id: str
     comp_id: str
-
+    auth_asym_id: str
     occupancy: float
     b_factor: float
 
@@ -283,6 +283,7 @@ class AssemblyAtom:
             occupancy=self.occupancy,
             b_factor=self.b_factor,
             label_alt_id=self.label_alt_id,
+            auth_asym_id=self.auth_asym_id,
         )
 
     def with_updates(self, idx: int, chain_suffix: str):
@@ -295,6 +296,7 @@ class AssemblyAtom:
             occupancy=self.occupancy,
             b_factor=self.b_factor,
             label_alt_id=self.label_alt_id,
+            auth_asym_id=self.auth_asym_id,
         )
 
 
@@ -1638,11 +1640,10 @@ def _model_assembly(
             occupancy=atom_site.occupancy,
             b_factor=atom_site.b_iso_or_equiv,
             label_alt_id=atom_site.label_alt_id,
+            auth_asym_id=atom_site.auth_asym_id,
         )
         for i, atom_site in enumerate(atom_sites)
     ]
-
-    auth_asym_by_label = {s.label_asym_id: s.auth_asym_id for s in atom_sites}
 
     residues: dict[ResidueId, Residue] = {}
     chains: dict[str, Chain] = {}
@@ -1654,7 +1655,7 @@ def _model_assembly(
             atom.chain_id,
             Chain(
                 atom.chain_id,
-                auth_asym_by_label[atom.chain_id],
+                atom.auth_asym_id,
                 metadata.struct_asym[atom.chain_id],
                 chain_types[atom.chain_id],
             ),
