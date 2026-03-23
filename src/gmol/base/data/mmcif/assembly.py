@@ -1464,6 +1464,9 @@ def _select_altlocs(atom_sites: list[AtomSite]):
             len(alt_atoms) > 1 for alt_atoms in residue_altlocs.values()
         )
 
+        # _resolve_residue_altloc_consistent selects one conformer for
+        # within-residue altlocs, so clear label_alt_id to avoid exporting
+        # unresolved-looking altloc markers.
         for atom in _resolve_residue_altloc_consistent(residue_altlocs):
             if within_res_altlocs and atom.label_alt_id is not None:
                 atom.label_alt_id = None
