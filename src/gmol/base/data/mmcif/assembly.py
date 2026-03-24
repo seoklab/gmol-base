@@ -21,10 +21,8 @@ from pydantic import (
 )
 
 from gmol.base.const import (
+    CCD_NAME_TO_ONE_LETTER,
     aa_restype_3to1,
-    dna_restype_3to1,
-    modres,
-    rna_restype_3to1,
 )
 from gmol.base.types import LooseModel
 from .parse import (
@@ -1422,12 +1420,11 @@ class Assembly(LooseModel):
                 comp_id = seqres.comp_id
 
                 if chain.type == MolType.Protein:
-                    comp_id = modres.get(comp_id, comp_id)
-                    seq_list.append(aa_restype_3to1.get(comp_id, "X"))
+                    seq_list.append(CCD_NAME_TO_ONE_LETTER.get(comp_id, "X"))
                 elif chain.type == MolType.DNA:
-                    seq_list.append(dna_restype_3to1.get(comp_id, "N"))
+                    seq_list.append(CCD_NAME_TO_ONE_LETTER.get(comp_id, "N"))
                 elif chain.type == MolType.RNA:
-                    seq_list.append(rna_restype_3to1.get(comp_id, "N"))
+                    seq_list.append(CCD_NAME_TO_ONE_LETTER.get(comp_id, "N"))
 
             seq = "".join(seq_list)
             fastas.append(f">{name}_{chain_id}\n{seq}\n")
