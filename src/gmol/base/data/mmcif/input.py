@@ -229,6 +229,8 @@ class PolymerChain:
 class NonPolymerLigand:
     entity_id: str
     chain_id: str
+    #: PDB ``auth_asym_id`` (author chain id); same as ``Assembly.Chain.auth_asym_id``.
+    auth_asym_id: str
 
     smiles: str
 
@@ -451,6 +453,7 @@ def _modres_as_ligand(
     ligand = NonPolymerLigand(
         entity_id=mod_entity,
         chain_id=mod_chain,
+        auth_asym_id=polymer.auth_asym_id,
         smiles=ref_ligand.smiles,
         atom_ids=np.array(ref_ligand.atom_ids, dtype=np.str_),
         atom_coords=crd,
@@ -561,6 +564,7 @@ def _build_sc_ligand(
     sc_frag: ChemComp,
     mod_entity: str,
     mod_chain: str,
+    auth_asym_id: str,
 ) -> NonPolymerLigand:
     ref_mmcif = MmcifRefLigand(sc_frag.atoms, sc_frag.bonds)
     ref_ligand = input_from_reference(ref_mmcif)
@@ -573,6 +577,7 @@ def _build_sc_ligand(
     ligand = NonPolymerLigand(
         entity_id=mod_entity,
         chain_id=mod_chain,
+        auth_asym_id=auth_asym_id,
         smiles=ref_ligand.smiles,
         atom_ids=np.array(ref_ligand.atom_ids, dtype=np.str_),
         atom_coords=crd,
@@ -585,6 +590,7 @@ def _modres_split_bb_sc(
     assembly: Assembly,
     chain_consts: PolymerConstants,
     chain_id: str,
+    auth_asym_id: str,
     resid: ResidueId | None,
     res_idx: int,
     chem_comp: ChemComp,
@@ -606,6 +612,7 @@ def _modres_split_bb_sc(
             frag,
             f"{mod_entity_prefix}-FRAG{i}",
             f"{mod_chain_prefix}-FRAG{i}",
+            auth_asym_id,
         )
         for i, frag in enumerate(sidechain_frags)
     ]
@@ -719,6 +726,7 @@ def process_polymer_chain(
             assembly,
             polymer_consts,
             chain.chain_id,
+            chain.auth_asym_id,
             seq.res_id,
             i,
             ccd[seq.comp_id],
@@ -743,6 +751,7 @@ def process_ligand_chain(assembly: Assembly, chain: Chain):
     return NonPolymerLigand(
         chain_id=chain.chain_id,
         entity_id=str(chain.entity_id),
+        auth_asym_id=chain.auth_asym_id,
         smiles=lig.smiles,
         atom_ids=np.array(lig.atom_ids, dtype=np.str_),
         atom_coords=coords,
