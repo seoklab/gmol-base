@@ -198,6 +198,8 @@ class PolymerChain:
 
     entity_id: str
     chain_id: str
+    #: PDB ``auth_asym_id`` (author chain id); same as ``Assembly.Chain.auth_asym_id``.
+    auth_asym_id: str
 
     # [N_res]
     # When set to X, modified residue (as a whole) is extracted as a ligand;
@@ -634,6 +636,7 @@ def process_polymer_chain(
         mol_type=chain.type,
         entity_id=str(chain.entity_id),
         chain_id=chain.chain_id,
+        auth_asym_id=chain.auth_asym_id,
         restype=np.array(
             [
                 polymer_consts.restype_order_with_x[
