@@ -1,10 +1,15 @@
+import math
 from collections.abc import Sequence
 from pathlib import Path
 
 import pytest
 from nuri.fmt import cif_ddl2_frame_as_dict, read_cif
 
-from gmol.base.data.mmcif import load_mmcif_single, mmcif_assemblies
+from gmol.base.data.mmcif import (
+    Assembly,
+    load_mmcif_single,
+    mmcif_assemblies,
+)
 from gmol.base.data.mmcif.write import mmcif_write_block
 
 
@@ -227,3 +232,49 @@ def test_assembly_operation_preserves_chain_auth_asym_id_mapping(
     }
 
     assert auth_by_label == {"A_1": "A", "A_2": "A"}
+
+
+def test_assembly_to_mmcif_writes_b_iso_or_equiv(sample_assembly: Assembly):
+    cif = sample_assembly.to_mmcif("1ubq")
+    rows = _parse_loop_rows(cif, "atom_site")
+    assert rows
+
+    expected = [
+        (f"{atom.b_factor:.2f}" if math.isfinite(atom.b_factor) else "?")
+        for atom in sample_assembly.atoms
+    ]
+    actual = [row["B_iso_or_equiv"] for row in rows]
+
+    assert actual == expected
+
+
+def test_assembly_to_mmcif_chain_writes_b_iso_or_equiv(
+    sample_assembly: Assembly,
+):
+    cid = next(iter(sample_assembly.chains))
+    chain = sample_assembly.chains[cid]
+
+    cif = sample_assembly.to_mmcif_chain("1ubq", cid)
+    rows = _parse_loop_rows(cif, "atom_site")
+    assert rows
+
+    atoms = list(sample_assembly.atoms_of_chain(chain))
+    expected = [
+        (f"{atom.b_factor:.2f}" if math.isfinite(atom.b_factor) else "?")
+        for atom in atoms
+    ]
+    actual = [row["B_iso_or_equiv"] for row in rows]
+
+    assert actual == expected
+
+
+def test_assembly_to_mmcif_writes_unknown_b_iso_or_equiv_as_question(
+    sample_assembly: Assembly,
+):
+    assembly = sample_assembly.model_copy(deep=True)
+    assembly.atoms[0].b_factor = float("nan")
+
+    cif = assembly.to_mmcif("1ubq")
+    rows = _parse_loop_rows(cif, "atom_site")
+    assert rows
+    assert rows[0]["B_iso_or_equiv"] == "?"
