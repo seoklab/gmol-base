@@ -378,9 +378,11 @@ class _PdbAtom:
         assert len(self.res_name) <= 3
         assert len(self.element) <= 2
         assert len(self.alt_id) == 1
+        # Parser stores missing _atom_site.B_iso_or_equiv as NaN
+        self.b_factor = self.b_factor if math.isfinite(self.b_factor) else 0.0
+        assert len(f"{self.b_factor:>6.2f}") == 6
 
     def to_pdb_line(self, serial: int):
-        b = self.b_factor if math.isfinite(self.b_factor) else 0.0
         return (
             # 1-21
             f"{self.record}{serial:>5} {self.name}{self.alt_id}{self.res_name:>3} "
@@ -390,7 +392,7 @@ class _PdbAtom:
             f"   {self.coords[0]:>8.3f}{self.coords[1]:>8.3f}{self.coords[2]:>8.3f}"
             #                       6         7
             #                       12345678901234567
-            f"{self.occupancy:>6.2f}{b:>6.2f}          {self.element.upper():>2}  "
+            f"{self.occupancy:>6.2f}{self.b_factor:>6.2f}          {self.element.upper():>2}  "
         )
 
 
