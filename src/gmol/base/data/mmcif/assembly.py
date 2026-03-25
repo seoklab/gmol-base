@@ -470,6 +470,12 @@ class Assembly(LooseModel):
 
         return data
 
+    @staticmethod
+    def _mmcif_float(value: float) -> str:
+        if not math.isfinite(value):
+            return "?"
+        return f"{value:.2f}"
+
     def count_polymer_chains(self) -> int:
         return len(self.chains) - sum(
             chain.type == MolType.Ligand for chain in self.chains.values()
@@ -719,6 +725,7 @@ class Assembly(LooseModel):
                     "Cartn_y",
                     "Cartn_z",
                     "occupancy",
+                    "B_iso_or_equiv",
                 ],
                 [
                     (
@@ -739,6 +746,7 @@ class Assembly(LooseModel):
                         f"{crd[1]:.3f}",
                         f"{crd[2]:.3f}",
                         f"{atom.occupancy:.2f}",
+                        self._mmcif_float(atom.b_factor),
                     )
                     for atom, crd in zip(self.atoms, self.coords)
                 ],
@@ -1038,6 +1046,8 @@ class Assembly(LooseModel):
                     "Cartn_x",
                     "Cartn_y",
                     "Cartn_z",
+                    "occupancy",
+                    "B_iso_or_equiv",
                 ],
                 [
                     (
@@ -1053,6 +1063,8 @@ class Assembly(LooseModel):
                         f"{crd[0]:.3f}",
                         f"{crd[1]:.3f}",
                         f"{crd[2]:.3f}",
+                        f"{atom.occupancy:.2f}",
+                        self._mmcif_float(atom.b_factor),
                     )
                     for atom, crd in zip(
                         self.atoms_of_chain(chain),
