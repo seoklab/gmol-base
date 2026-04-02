@@ -6,6 +6,7 @@ from collections.abc import Iterable
 from copy import deepcopy
 from dataclasses import dataclass, field, fields
 from functools import cached_property
+from pathlib import Path
 from string import ascii_lowercase, ascii_uppercase, digits
 from typing import ClassVar, Protocol
 
@@ -37,6 +38,7 @@ from .parse import (
     Scheme,
     StructConn,
     SymOp,
+    load_mmcif_single_with_chem_comp,
 )
 from .write import mmcif_bond_order, mmcif_bool, mmcif_write_block
 
@@ -51,6 +53,7 @@ __all__ = [
     "SequenceToResidue",
     "Transformation",
     "expand_ops",
+    "load_one_assembly",
     "mmcif_assemblies",
     "mmcif_chain_types",
     "polymer_mol_type",
@@ -267,6 +270,8 @@ class AssemblyAtom:
 
     label_alt_id: str | None = None
 
+    group_PDB: str = "ATOM"
+
     @property
     def chain_id(self) -> str:
         return self.residue_id.chain_id
@@ -281,6 +286,7 @@ class AssemblyAtom:
             occupancy=self.occupancy,
             b_factor=self.b_factor,
             label_alt_id=self.label_alt_id,
+            group_PDB=self.group_PDB,
         )
 
     def with_updates(self, idx: int, chain_suffix: str):
@@ -293,6 +299,7 @@ class AssemblyAtom:
             occupancy=self.occupancy,
             b_factor=self.b_factor,
             label_alt_id=self.label_alt_id,
+            group_PDB=self.group_PDB,
         )
 
 
@@ -731,7 +738,7 @@ class Assembly(LooseModel):
                     (
                         atom.atom_idx,
                         atom.type_symbol,
-                        "ATOM",
+                        atom.group_PDB,
                         atom.atom_id,
                         atom.label_alt_id or ".",
                         atom.comp_id,
@@ -753,11 +760,25 @@ class Assembly(LooseModel):
             )
             + mmcif_write_block(
                 "chem_comp",
-                ["id", "type", "mon_nstd_flag"],
+                [
+                    "id",
+                    "name",
+                    "type",
+                    "formula",
+                    "formula_weight",
+                    "mon_nstd_flag",
+                ],
                 [
                     (
                         comp.id,
+                        comp.name,
                         comp.type,
+                        comp.formula or "?",
+                        (
+                            f"{comp.formula_weight:.3f}"
+                            if comp.formula_weight is not None
+                            else "?"
+                        ),
                         "y" if comp.mon_nstd_flag else ".",
                     )
                     for comp in self.chem_comps.values()
@@ -894,6 +915,34 @@ class Assembly(LooseModel):
                     for branch in branches
                 ],
             )
+            + f"""
+#
+_pdbx_struct_assembly.id                   1
+_pdbx_struct_assembly.details              author_defined_assembly
+_pdbx_struct_assembly.method_details       ?
+_pdbx_struct_assembly.oligomeric_details   {len(self.chains)}-meric
+_pdbx_struct_assembly.oligomeric_count     {len(self.chains)}
+#
+_pdbx_struct_assembly_gen.assembly_id      1
+_pdbx_struct_assembly_gen.oper_expression  1
+_pdbx_struct_assembly_gen.asym_id_list     {",".join(self.chains.keys())}
+#
+_pdbx_struct_oper_list.id                  1
+_pdbx_struct_oper_list.type                'identity operation'
+_pdbx_struct_oper_list.name                1_555
+_pdbx_struct_oper_list.symmetry_operation  x,y,z
+_pdbx_struct_oper_list.matrix[1][1]        1.0
+_pdbx_struct_oper_list.matrix[1][2]        0.0
+_pdbx_struct_oper_list.matrix[1][3]        0.0
+_pdbx_struct_oper_list.vector[1]           0.0
+_pdbx_struct_oper_list.matrix[2][1]        0.0
+_pdbx_struct_oper_list.matrix[2][2]        1.0
+_pdbx_struct_oper_list.matrix[2][3]        0.0
+_pdbx_struct_oper_list.vector[2]           0.0
+_pdbx_struct_oper_list.matrix[3][1]        0.0
+_pdbx_struct_oper_list.matrix[3][2]        0.0
+_pdbx_struct_oper_list.matrix[3][3]        1.0
+_pdbx_struct_oper_list.vector[3]           0.0"""
         )
 
         if write_schemes:
@@ -974,310 +1023,6 @@ class Assembly(LooseModel):
                         if scheme.pdb_seq_num is not None
                     ],
                 )
-            )
-
-        return mmcif_content + "\n#\n"
-
-    def to_mmcif_chain(self, name: str, cid: str, write_schemes: bool = True):
-        chain = self.chains[cid]
-
-        merged_branches = set(chain.branches)
-        branch_scheme = {
-            branch.ptnr1.to_scheme(chain.entity_id)
-            for branch in chain.branches
-        } | {
-            branch.ptnr2.to_scheme(chain.entity_id)
-            for branch in chain.branches
-        }
-        nonpoly_scheme: set[Scheme] = set()
-        if chain.type == MolType.Ligand:
-            for seqres in chain.seqres:
-                if seqres.res_id is None:
-                    continue
-
-                res = self.residues[seqres.res_id]
-                scheme = Scheme(
-                    asym_id=cid,
-                    entity_id=chain.entity_id,
-                    mon_id=res.chem_comp.id,
-                    seq_id=seqres.seq_id,
-                    pdb_seq_num=res.residue_id.seq_id,
-                    pdb_ins_code=res.residue_id.ins_code or None,
-                )
-                if scheme not in branch_scheme:
-                    nonpoly_scheme.add(scheme)
-
-        label_seqs: dict[ResidueId, int | str] = {
-            seqres.res_id: seqres.seq_id if chain.type.is_polymer else "."
-            for seqres in chain.seqres
-            if seqres.res_id is not None
-        }
-        entity = self.entities[chain.entity_id]
-
-        ccid_chain = {
-            self.residues[rid].chem_comp.id for rid in chain.residue_ids
-        }
-        atoms_chain = set(chain.atom_idxs)
-
-        mmcif_content = (
-            f"data_{name}_{cid}"
-            + mmcif_write_block(
-                "entity",
-                ["id", "type", "pdbx_description"],
-                [(entity.id, entity.type, entity.pdbx_description)],
-            )
-            + mmcif_write_block(
-                "struct_asym",
-                ["id", "entity_id"],
-                [(cid, chain.entity_id)],
-            )
-            + mmcif_write_block(
-                "atom_site",
-                [
-                    "id",
-                    "type_symbol",
-                    "label_atom_id",
-                    "label_alt_id",
-                    "label_comp_id",
-                    "label_asym_id",
-                    "label_seq_id",
-                    "auth_seq_id",
-                    "pdbx_PDB_ins_code",
-                    "Cartn_x",
-                    "Cartn_y",
-                    "Cartn_z",
-                    "occupancy",
-                    "B_iso_or_equiv",
-                ],
-                [
-                    (
-                        atom.atom_idx,
-                        atom.type_symbol,
-                        atom.atom_id,
-                        atom.label_alt_id or ".",
-                        atom.comp_id,
-                        atom.chain_id,
-                        label_seqs[atom.residue_id],
-                        atom.residue_id.seq_id,
-                        atom.residue_id.ins_code or ".",
-                        f"{crd[0]:.3f}",
-                        f"{crd[1]:.3f}",
-                        f"{crd[2]:.3f}",
-                        f"{atom.occupancy:.2f}",
-                        self._mmcif_float(atom.b_factor),
-                    )
-                    for atom, crd in zip(
-                        self.atoms_of_chain(chain),
-                        self.coords[chain.atom_idxs],
-                    )
-                ],
-            )
-            + mmcif_write_block(
-                "chem_comp",
-                ["id", "type", "mon_nstd_flag"],
-                [
-                    (
-                        comp.id,
-                        comp.type,
-                        "y" if comp.mon_nstd_flag else ".",
-                    )
-                    for comp in self.chem_comps.values()
-                    if comp.id in ccid_chain
-                ],
-            )
-            + mmcif_write_block(
-                "chem_comp_atom",
-                [
-                    "comp_id",
-                    "atom_id",
-                    "type_symbol",
-                    "pdbx_aromatic_flag",
-                    "pdbx_stereo_config",
-                ],
-                [
-                    (
-                        comp_id,
-                        atom.atom_id,
-                        atom.type_symbol,
-                        mmcif_bool(atom.pdbx_aromatic_flag),
-                        atom.pdbx_stereo_config or "N",
-                    )
-                    for comp_id, comp in self.chem_comps.items()
-                    if comp.id in ccid_chain
-                    for atom in comp.atoms
-                ],
-            )
-            + mmcif_write_block(
-                "chem_comp_bond",
-                [
-                    "comp_id",
-                    "atom_id_1",
-                    "atom_id_2",
-                    "value_order",
-                    "pdbx_aromatic_flag",
-                    "pdbx_stereo_config",
-                ],
-                [
-                    (
-                        comp_id,
-                        bond.atom_id_1,
-                        bond.atom_id_2,
-                        mmcif_bond_order(bond.value_order),
-                        mmcif_bool(bond.pdbx_aromatic_flag),
-                        bond.pdbx_stereo_config or "N",
-                    )
-                    for comp_id, comp in self.chem_comps.items()
-                    if comp.id in ccid_chain
-                    for bond in comp.bonds
-                ],
-            )
-            + mmcif_write_block(
-                "struct_conn",
-                [
-                    "conn_type_id",
-                    "pdbx_leaving_atom_flag",
-                    "ptnr1_label_asym_id",
-                    "ptnr1_label_comp_id",
-                    "ptnr1_label_atom_id",
-                    "ptnr1_label_seq_id",
-                    "ptnr1_auth_seq_id",
-                    "pdbx_ptnr1_PDB_ins_code",
-                    "ptnr2_label_asym_id",
-                    "ptnr2_label_comp_id",
-                    "ptnr2_label_atom_id",
-                    "ptnr2_label_seq_id",
-                    "ptnr2_auth_seq_id",
-                    "pdbx_ptnr2_PDB_ins_code",
-                ],
-                [
-                    (
-                        conn.conn_type,
-                        {0: "none", 1: "one", 2: "both"}[
-                            conn.leaving_atom_count
-                        ],
-                        (ptnr1 := self.atoms[conn.src_idx]).chain_id,
-                        ptnr1.comp_id,
-                        ptnr1.atom_id,
-                        label_seqs[ptnr1.residue_id],
-                        ptnr1.residue_id.seq_id,
-                        ptnr1.residue_id.ins_code or ".",
-                        (ptnr2 := self.atoms[conn.dst_idx]).chain_id,
-                        ptnr2.comp_id,
-                        ptnr2.atom_id,
-                        label_seqs[ptnr2.residue_id],
-                        ptnr2.residue_id.seq_id,
-                        ptnr2.residue_id.ins_code or ".",
-                    )
-                    for conn in self.connections
-                    if conn.src_idx in atoms_chain
-                    and conn.dst_idx in atoms_chain
-                ],
-            )
-            + mmcif_write_block(
-                "pdbx_entity_branch_link",
-                [
-                    "entity_id",
-                    "entity_branch_list_num_1",
-                    "comp_id_1",
-                    "atom_id_1",
-                    "leaving_atom_id_1",
-                    "entity_branch_list_num_2",
-                    "comp_id_2",
-                    "atom_id_2",
-                    "leaving_atom_id_2",
-                    "value_order",
-                ],
-                [
-                    (
-                        chain.entity_id,
-                        branch.ptnr1.seq_id,
-                        branch.ptnr1.comp_id,
-                        branch.ptnr1.atom_id,
-                        branch.ptnr1.leaving_atom_id,
-                        branch.ptnr2.seq_id,
-                        branch.ptnr2.comp_id,
-                        branch.ptnr2.atom_id,
-                        branch.ptnr2.leaving_atom_id,
-                        mmcif_bond_order(branch.order),
-                    )
-                    for branch in merged_branches
-                ],
-            )
-        )
-
-        if write_schemes:
-            if chain.type.is_polymer:
-                mmcif_content += mmcif_write_block(
-                    "pdbx_poly_seq_scheme",
-                    [
-                        "asym_id",
-                        "entity_id",
-                        "seq_id",
-                        "mon_id",
-                        "pdb_seq_num",
-                        "pdb_strand_id",
-                        "pdb_ins_code",
-                    ],
-                    [
-                        (
-                            cid,
-                            chain.entity_id,
-                            seqres.seq_id,
-                            seqres.comp_id,
-                            seqres.res_id.seq_id if seqres.res_id else "?",
-                            cid,
-                            (seqres.res_id.ins_code or ".")
-                            if seqres.res_id
-                            else "?",
-                        )
-                        for seqres in chain.seqres
-                    ],
-                )
-
-            mmcif_content += mmcif_write_block(
-                "pdbx_branch_scheme",
-                [
-                    "asym_id",
-                    "entity_id",
-                    "num",
-                    "mon_id",
-                    "pdb_seq_num",
-                    "pdb_ins_code",
-                ],
-                [
-                    (
-                        scheme.asym_id,
-                        scheme.entity_id,
-                        scheme.seq_id,
-                        scheme.mon_id,
-                        scheme.pdb_seq_num,
-                        scheme.pdb_ins_code or ".",
-                    )
-                    for scheme in sorted(branch_scheme)
-                    if scheme.pdb_seq_num is not None
-                ],
-            ) + mmcif_write_block(
-                "pdbx_nonpoly_scheme",
-                [
-                    "asym_id",
-                    "entity_id",
-                    "mon_id",
-                    "ndb_seq_num",
-                    "pdb_seq_num",
-                    "pdb_ins_code",
-                ],
-                [
-                    (
-                        scheme.asym_id,
-                        scheme.entity_id,
-                        scheme.mon_id,
-                        scheme.seq_id,
-                        scheme.pdb_seq_num,
-                        scheme.pdb_ins_code or ".",
-                    )
-                    for scheme in sorted(nonpoly_scheme)
-                    if scheme.pdb_seq_num is not None
-                ],
             )
 
         return mmcif_content + "\n#\n"
@@ -1649,6 +1394,7 @@ def _model_assembly(
             occupancy=atom_site.occupancy,
             b_factor=atom_site.b_iso_or_equiv,
             label_alt_id=atom_site.label_alt_id,
+            group_PDB=atom_site.group_PDB,
         )
         for i, atom_site in enumerate(atom_sites)
     ]
@@ -1792,3 +1538,11 @@ def mmcif_assemblies(
         for initial_assembly in assemblies
         for ops in operation_groups
     ]
+
+
+def load_one_assembly(file: Path, assembly_id: int | None = None) -> Assembly:
+    mmcif, chem_comps = load_mmcif_single_with_chem_comp(file)
+    assemblies = mmcif_assemblies(mmcif, chem_comps, assembly_id)
+    if len(assemblies) != 1:
+        raise ValueError(f"{len(assemblies)} assemblies generated, expected 1")
+    return assemblies[0]

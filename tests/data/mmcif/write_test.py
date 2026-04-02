@@ -7,7 +7,9 @@ from nuri.fmt import cif_ddl2_frame_as_dict, read_cif
 
 from gmol.base.data.mmcif import (
     Assembly,
+    ChemComp,
     load_mmcif_single,
+    load_one_assembly,
     mmcif_assemblies,
 )
 from gmol.base.data.mmcif.write import mmcif_write_block
@@ -199,23 +201,23 @@ def test_write_block_quotes_leading_single_quote_description_from_6akd(
 @pytest.mark.parametrize("pdb_id", ["7rtb", "7qgw", "6akd"])
 def test_assembly_to_mmcif_roundtrip_cif_parsing(
     test_data: Path,
-    tmp_path,
-    ccd_components,
+    tmp_path: Path,
+    ccd_components: dict[str, ChemComp],
     pdb_id: str,
 ):
     src = test_data / "mmcif" / f"{pdb_id}.cif"
     mmcif = load_mmcif_single(src)
     assemblies = mmcif_assemblies(mmcif, ccd_components)
-    assert assemblies
+    assert len(assemblies) == 1
 
     cif = assemblies[0].to_mmcif(pdb_id)
     out = tmp_path / f"{pdb_id}_roundtrip.cif"
     out.write_text(cif)
 
-    block = next(read_cif(out))
-    parsed = cif_ddl2_frame_as_dict(block.data)
-    assert "atom_site" in parsed
-    assert len(parsed["atom_site"]) > 0
+    asm = load_one_assembly(out)
+    cif2 = asm.to_mmcif(pdb_id)
+
+    assert cif.splitlines() == cif2.splitlines()
 
 
 def test_assembly_operation_preserves_chain_auth_asym_id_mapping(
@@ -242,26 +244,6 @@ def test_assembly_to_mmcif_writes_b_iso_or_equiv(sample_assembly: Assembly):
     expected = [
         (f"{atom.b_factor:.2f}" if math.isfinite(atom.b_factor) else "?")
         for atom in sample_assembly.atoms
-    ]
-    actual = [row["B_iso_or_equiv"] for row in rows]
-
-    assert actual == expected
-
-
-def test_assembly_to_mmcif_chain_writes_b_iso_or_equiv(
-    sample_assembly: Assembly,
-):
-    cid = next(iter(sample_assembly.chains))
-    chain = sample_assembly.chains[cid]
-
-    cif = sample_assembly.to_mmcif_chain("1ubq", cid)
-    rows = _parse_loop_rows(cif, "atom_site")
-    assert rows
-
-    atoms = list(sample_assembly.atoms_of_chain(chain))
-    expected = [
-        (f"{atom.b_factor:.2f}" if math.isfinite(atom.b_factor) else "?")
-        for atom in atoms
     ]
     actual = [row["B_iso_or_equiv"] for row in rows]
 
