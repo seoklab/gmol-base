@@ -898,6 +898,34 @@ class Assembly(LooseModel):
                     for branch in branches
                 ],
             )
+            + f"""
+#
+_pdbx_struct_assembly.id                   1
+_pdbx_struct_assembly.details              author_defined_assembly
+_pdbx_struct_assembly.method_details       ?
+_pdbx_struct_assembly.oligomeric_details   {len(self.chains)}-meric
+_pdbx_struct_assembly.oligomeric_count     {len(self.chains)}
+#
+_pdbx_struct_assembly_gen.assembly_id      1
+_pdbx_struct_assembly_gen.oper_expression  1
+_pdbx_struct_assembly_gen.asym_id_list     {",".join(self.chains.keys())}
+#
+_pdbx_struct_oper_list.id                  1
+_pdbx_struct_oper_list.type                'identity operation'
+_pdbx_struct_oper_list.name                1_555
+_pdbx_struct_oper_list.symmetry_operation  x,y,z
+_pdbx_struct_oper_list.matrix[1][1]        1.0
+_pdbx_struct_oper_list.matrix[1][2]        0.0
+_pdbx_struct_oper_list.matrix[1][3]        0.0
+_pdbx_struct_oper_list.vector[1]           0.0
+_pdbx_struct_oper_list.matrix[2][1]        0.0
+_pdbx_struct_oper_list.matrix[2][2]        1.0
+_pdbx_struct_oper_list.matrix[2][3]        0.0
+_pdbx_struct_oper_list.vector[2]           0.0
+_pdbx_struct_oper_list.matrix[3][1]        0.0
+_pdbx_struct_oper_list.matrix[3][2]        0.0
+_pdbx_struct_oper_list.matrix[3][3]        1.0
+_pdbx_struct_oper_list.vector[3]           0.0"""
         )
 
         if write_schemes:
