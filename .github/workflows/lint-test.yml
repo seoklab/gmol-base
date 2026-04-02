@@ -122,7 +122,7 @@ jobs:
           uv run coverage xml
 
       - if: ${{ matrix.coverage }}
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@v6
         with:
           disable_search: true
           files: ./coverage.xml
