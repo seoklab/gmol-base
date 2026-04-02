@@ -6,6 +6,7 @@ from collections.abc import Iterable
 from copy import deepcopy
 from dataclasses import dataclass, field, fields
 from functools import cached_property
+from pathlib import Path
 from string import ascii_lowercase, ascii_uppercase, digits
 from typing import ClassVar, Protocol
 
@@ -37,6 +38,7 @@ from .parse import (
     Scheme,
     StructConn,
     SymOp,
+    load_mmcif_single_with_chem_comp,
 )
 from .write import mmcif_bond_order, mmcif_bool, mmcif_write_block
 
@@ -51,6 +53,7 @@ __all__ = [
     "SequenceToResidue",
     "Transformation",
     "expand_ops",
+    "load_one_assembly",
     "mmcif_assemblies",
     "mmcif_chain_types",
     "polymer_mol_type",
@@ -1521,3 +1524,11 @@ def mmcif_assemblies(
         for initial_assembly in assemblies
         for ops in operation_groups
     ]
+
+
+def load_one_assembly(file: Path, assembly_id: int | None = None) -> Assembly:
+    mmcif, chem_comps = load_mmcif_single_with_chem_comp(file)
+    assemblies = mmcif_assemblies(mmcif, chem_comps, assembly_id)
+    if len(assemblies) != 1:
+        raise ValueError(f"{len(assemblies)} assemblies generated, expected 1")
+    return assemblies[0]
