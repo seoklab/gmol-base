@@ -760,11 +760,25 @@ class Assembly(LooseModel):
             )
             + mmcif_write_block(
                 "chem_comp",
-                ["id", "type", "mon_nstd_flag"],
+                [
+                    "id",
+                    "name",
+                    "type",
+                    "formula",
+                    "formula_weight",
+                    "mon_nstd_flag",
+                ],
                 [
                     (
                         comp.id,
+                        comp.name,
                         comp.type,
+                        comp.formula or "?",
+                        (
+                            f"{comp.formula_weight:.3f}"
+                            if comp.formula_weight is not None
+                            else "?"
+                        ),
                         "y" if comp.mon_nstd_flag else ".",
                     )
                     for comp in self.chem_comps.values()
