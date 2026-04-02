@@ -51,6 +51,7 @@ from pydantic import (
     AliasPath,
     BaseModel,
     Field,
+    TypeAdapter,
     field_validator,
     model_validator,
 )
@@ -58,7 +59,13 @@ from tqdm import tqdm
 
 from gmol.base.types import LooseModel
 
-__all__ = ["ChemComp", "Mmcif", "load_components", "load_mmcif_single"]
+__all__ = [
+    "ChemComp",
+    "Mmcif",
+    "load_components",
+    "load_mmcif_single",
+    "load_mmcif_single_with_chem_comp",
+]
 
 _logger = logging.getLogger(__name__)
 
@@ -547,6 +554,17 @@ def load_mmcif_single(file: Path):
     data = next(read_cif(file)).data
     mmcif = Mmcif.model_validate(cif_ddl2_frame_as_dict(data))
     return mmcif
+
+
+def load_mmcif_single_with_chem_comp(file: Path):
+    data = next(read_cif(file)).data
+    data = cif_ddl2_frame_as_dict(data)
+
+    mmcif = Mmcif.model_validate(data)
+    chem_comps = TypeAdapter(dict[str, ChemComp]).validate_python(
+        _join_chem_comp(data)
+    )
+    return mmcif, chem_comps
 
 
 def load_components(file: Path, max_count: int = 0):
