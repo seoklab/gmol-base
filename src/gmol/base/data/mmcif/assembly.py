@@ -267,6 +267,8 @@ class AssemblyAtom:
 
     label_alt_id: str | None = None
 
+    group_PDB: str = "ATOM"
+
     @property
     def chain_id(self) -> str:
         return self.residue_id.chain_id
@@ -281,6 +283,7 @@ class AssemblyAtom:
             occupancy=self.occupancy,
             b_factor=self.b_factor,
             label_alt_id=self.label_alt_id,
+            group_PDB=self.group_PDB,
         )
 
     def with_updates(self, idx: int, chain_suffix: str):
@@ -293,6 +296,7 @@ class AssemblyAtom:
             occupancy=self.occupancy,
             b_factor=self.b_factor,
             label_alt_id=self.label_alt_id,
+            group_PDB=self.group_PDB,
         )
 
 
@@ -731,7 +735,7 @@ class Assembly(LooseModel):
                     (
                         atom.atom_idx,
                         atom.type_symbol,
-                        "ATOM",
+                        atom.group_PDB,
                         atom.atom_id,
                         atom.label_alt_id or ".",
                         atom.comp_id,
@@ -1649,6 +1653,7 @@ def _model_assembly(
             occupancy=atom_site.occupancy,
             b_factor=atom_site.b_iso_or_equiv,
             label_alt_id=atom_site.label_alt_id,
+            group_PDB=atom_site.group_PDB,
         )
         for i, atom_site in enumerate(atom_sites)
     ]
