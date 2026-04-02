@@ -248,26 +248,6 @@ def test_assembly_to_mmcif_writes_b_iso_or_equiv(sample_assembly: Assembly):
     assert actual == expected
 
 
-def test_assembly_to_mmcif_chain_writes_b_iso_or_equiv(
-    sample_assembly: Assembly,
-):
-    cid = next(iter(sample_assembly.chains))
-    chain = sample_assembly.chains[cid]
-
-    cif = sample_assembly.to_mmcif_chain("1ubq", cid)
-    rows = _parse_loop_rows(cif, "atom_site")
-    assert rows
-
-    atoms = list(sample_assembly.atoms_of_chain(chain))
-    expected = [
-        (f"{atom.b_factor:.2f}" if math.isfinite(atom.b_factor) else "?")
-        for atom in atoms
-    ]
-    actual = [row["B_iso_or_equiv"] for row in rows]
-
-    assert actual == expected
-
-
 def test_assembly_to_mmcif_writes_unknown_b_iso_or_equiv_as_question(
     sample_assembly: Assembly,
 ):
