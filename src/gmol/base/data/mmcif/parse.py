@@ -73,7 +73,7 @@ _logger = logging.getLogger(__name__)
 class Entity(LooseModel):
     id: int
     type: str
-    pdbx_description: str
+    pdbx_description: str | None = None
 
 
 class ChemCompAtom(LooseModel):
@@ -142,6 +142,7 @@ class Scheme(LooseModel):
             "seq_id",  # poly_seq_scheme
             "ndb_seq_num",  # nonpoly_scheme
             "num",  # branch_scheme
+            "pdb_seq_num",  # fallback for nonpoly_scheme, branch_scheme, poly_seq_scheme
         )
     )
 
@@ -215,6 +216,12 @@ class AtomSite(LooseModel):
         v["cartn"] = np.array(
             [v["Cartn_x"], v["Cartn_y"], v["Cartn_z"]], dtype=np.float64
         )
+        return v
+
+    @model_validator(mode="before")
+    @staticmethod
+    def _set_missing_replaceable_values(v: dict[str, Any]):
+        v.setdefault("auth_comp_id", v["label_comp_id"])
         return v
 
 
@@ -324,13 +331,19 @@ class StructConnPartner(LooseModel):
 
     symmetry: str
 
+    @model_validator(mode="before")
+    @staticmethod
+    def _set_missing_replaceable_values(v: dict[str, Any]):
+        v.setdefault("auth_comp_id", v["label_comp_id"])
+        return v
+
 
 class StructConn(LooseModel):
     id: str
     conn_type_id: str
 
-    pdbx_leaving_atom_flag: int = Field(ge=0, le=2)
-    pdbx_dist_value: float | None
+    pdbx_leaving_atom_flag: int = Field(default=0, ge=0, le=2)
+    pdbx_dist_value: float | None = None
 
     ptnr1: StructConnPartner
     ptnr2: StructConnPartner
@@ -418,9 +431,13 @@ class PdbMetadata(BaseModel):
 
 class Mmcif(LooseModel):
     entry_id: str = Field(validation_alias=AliasPath("entry", 0, "id"))
-    exptl_method: str = Field(validation_alias=AliasPath("exptl", 0, "method"))
+    exptl_method: str = Field(
+        default="",
+        validation_alias=AliasPath("exptl", 0, "method"),
+    )
     pdbx_keywords: str = Field(
-        validation_alias=AliasPath("struct_keywords", 0, "pdbx_keywords")
+        default="",
+        validation_alias=AliasPath("struct_keywords", 0, "pdbx_keywords"),
     )
 
     revision_date: dt.date = Field(
@@ -439,8 +456,8 @@ class Mmcif(LooseModel):
 
     atom_site: list[AtomSite]
 
-    pdbx_struct_assembly: list[BioAssembly]
-    pdbx_struct_oper_list: dict[str, SymOp]
+    pdbx_struct_assembly: list[BioAssembly] = Field(default_factory=list)
+    pdbx_struct_oper_list: dict[str, SymOp] = Field(default_factory=dict)
     struct_asym: dict[str, int]
 
     struct_conn: list[StructConn] = Field(default_factory=list)
@@ -463,6 +480,7 @@ class Mmcif(LooseModel):
         min_rev = min(
             (rev for rev in v.get("pdbx_audit_revision_history", [])),
             key=lambda r: int(r["ordinal"]),
+            default={"ordinal": 1, "revision_date": "1970-01-01"},
         )
         v["pdbx_audit_revision_history"] = min_rev  # type: ignore[assignment]
         return v
