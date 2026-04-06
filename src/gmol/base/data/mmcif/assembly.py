@@ -703,7 +703,7 @@ class Assembly(LooseModel):
                 "entity",
                 ["id", "type", "pdbx_description"],
                 [
-                    (entity.id, entity.type, entity.pdbx_description)
+                    (entity.id, entity.type, entity.pdbx_description or ".")
                     for entity in self.entities.values()
                 ],
             )
@@ -1518,6 +1518,10 @@ def mmcif_assemblies(
     data: Mmcif, ccd: dict[str, ChemComp], assembly_id: int | None = None
 ) -> list[Assembly]:
     assemblies = _prepare_initial_assemblies(data, ccd)
+
+    if not data.pdbx_struct_assembly:
+        return assemblies
+
     raw_assemblies = _select_assembly_gens(
         data.pdbx_struct_assembly, assembly_id
     )
