@@ -22,10 +22,7 @@ from pydantic import (
     model_validator,
 )
 
-from gmol.base.const import (
-    CCD_NAME_TO_ONE_LETTER,
-    aa_restype_3to1,
-)
+from gmol.base.const import CCD_NAME_TO_ONE_LETTER, aa_restype_3to1
 from gmol.base.types import LooseModel
 from .parse import (
     AtomSite,
@@ -73,6 +70,15 @@ class MolType(enum.IntEnum):
     @property
     def is_polymer(self) -> bool:
         return self.value < MolType.Ligand
+
+    @property
+    def entity_poly_type(self) -> str:
+        """Returns the mmCIF _entity_poly.type string for this MolType."""
+        return {
+            MolType.Protein: "polypeptide(L)",
+            MolType.RNA: "polyribonucleotide",
+            MolType.DNA: "polydeoxyribonucleotide",
+        }[self]
 
 
 @dataclass(frozen=True, order=True)
@@ -637,8 +643,16 @@ class Assembly(LooseModel):
         merged_branches: dict[int, set[Branch]] = defaultdict(set)
         branch_scheme: dict[str, set[Scheme]] = defaultdict(set)
         nonpoly_scheme: dict[str, set[Scheme]] = defaultdict(set)
+        entity_chains: dict[int, list[Chain]] = defaultdict(list)
+        entity_seqres: dict[int, list[SequenceToResidue]] = {}
+
         for chain in self.chains.values():
             merged_branches[chain.entity_id].update(chain.branches)
+
+            if chain.type.is_polymer:
+                entity_chains[chain.entity_id].append(chain)
+                if chain.entity_id not in entity_seqres:
+                    entity_seqres[chain.entity_id] = chain.seqres
 
             br_schemes = branch_scheme[chain.chain_id]
             br_schemes.update(
@@ -708,6 +722,35 @@ class Assembly(LooseModel):
                 [
                     (entity.id, entity.type, entity.pdbx_description or ".")
                     for entity in self.entities.values()
+                ],
+            )
+            + mmcif_write_block(
+                "entity_poly",
+                [
+                    "entity_id",
+                    "type",
+                    "nstd_linkage",
+                    "nstd_monomer",
+                    "pdbx_strand_id",
+                ],
+                [
+                    (
+                        eid,
+                        chains_list[0].type.entity_poly_type,
+                        "no",
+                        "no",
+                        ",".join(c.chain_id for c in chains_list),
+                    )
+                    for eid, chains_list in sorted(entity_chains.items())
+                ],
+            )
+            + mmcif_write_block(
+                "entity_poly_seq",
+                ["entity_id", "num", "mon_id", "hetero"],
+                [
+                    (eid, seqres.seq_id, seqres.comp_id, "n")
+                    for eid, seqres_list in sorted(entity_seqres.items())
+                    for seqres in seqres_list
                 ],
             )
             + mmcif_write_block(
