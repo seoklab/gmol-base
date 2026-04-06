@@ -61,6 +61,8 @@ from gmol.base.types import LooseModel
 
 __all__ = [
     "ChemComp",
+    "EntityPoly",
+    "EntityPolySeq",
     "Mmcif",
     "load_components",
     "load_mmcif_single",
@@ -74,6 +76,52 @@ class Entity(LooseModel):
     id: int
     type: str
     pdbx_description: str | None = None
+
+
+class EntityPoly(LooseModel):
+    entity_id: int
+    type: str
+    pdbx_strand_id: list[str]
+    # NOTE: fields below are in rcsb and Boltz models, but not in AF3 models.
+    # For now, we keep these as placeholders but exclude in to_mmcif()
+    nstd_linkage: bool | None = None
+    nstd_monomer: bool | None = None
+    pdbx_seq_one_letter_code: str | None = None
+    pdbx_seq_one_letter_code_can: str | None = None
+
+    @field_validator("nstd_linkage", "nstd_monomer", mode="before")
+    @staticmethod
+    def _coerce_bool(v: str | bool | None) -> bool | None:
+        if isinstance(v, bool):
+            return v
+        if v is None:
+            return None
+        return v.lower() in ("yes", "y")
+
+    @field_validator("pdbx_strand_id", mode="before")
+    @staticmethod
+    def _parse_strand_ids(v: str | list[str] | None) -> list[str]:
+        if v is None:
+            return []
+        if isinstance(v, list):
+            return v
+        return [s.strip() for s in v.split(",") if s.strip()]
+
+
+class EntityPolySeq(LooseModel):
+    entity_id: int
+    num: int
+    mon_id: str
+    hetero: bool = False
+
+    @field_validator("hetero", mode="before")
+    @staticmethod
+    def _coerce_hetero(v: str | bool | None) -> bool:
+        if isinstance(v, bool):
+            return v
+        if v is None:
+            return False
+        return v.lower() in ("yes", "y")
 
 
 class ChemCompAtom(LooseModel):
@@ -452,6 +500,10 @@ class Mmcif(LooseModel):
     resolution: float = Field(default=999.9)
 
     entity: dict[int, Entity] = Field(default_factory=dict)
+    entity_poly: dict[int, EntityPoly] = Field(default_factory=dict)
+    entity_poly_seq: dict[int, list[EntityPolySeq]] = Field(
+        default_factory=dict
+    )
 
     pdbx_poly_seq_scheme: dict[str, list[Scheme]] = Field(default_factory=dict)
     pdbx_branch_scheme: dict[str, list[Scheme]] = Field(default_factory=dict)
@@ -539,6 +591,19 @@ class Mmcif(LooseModel):
     @staticmethod
     def _list_as_dict(v: list[dict[str, Any]]):
         return {d["id"]: d for d in v}
+
+    @field_validator("entity_poly", mode="before")
+    @staticmethod
+    def _xform_entity_poly(v: list[dict[str, Any]]):
+        return {d["entity_id"]: d for d in v}
+
+    @field_validator("entity_poly_seq", mode="before")
+    @staticmethod
+    def _xform_entity_poly_seq(v: list[dict[str, Any]]):
+        ret = defaultdict(list)
+        for d in v:
+            ret[d["entity_id"]].append(d)
+        return ret
 
     @field_validator(
         "pdbx_poly_seq_scheme",
