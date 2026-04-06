@@ -477,10 +477,11 @@ class Mmcif(LooseModel):
     @model_validator(mode="before")
     @staticmethod
     def _find_oldest(v: dict[str, list[dict[str, Any]]]):
-        revisions = v.get("pdbx_audit_revision_history", [])
-        if not revisions:
-            revisions = [{"ordinal": 1, "revision_date": "1970-01-01"}]
-        min_rev = min(revisions, key=lambda r: int(r["ordinal"]))
+        min_rev = min(
+            (rev for rev in v.get("pdbx_audit_revision_history", [])),
+            key=lambda r: int(r["ordinal"]),
+            default={"ordinal": 1, "revision_date": "1970-01-01"},
+        )
         v["pdbx_audit_revision_history"] = min_rev  # type: ignore[assignment]
         return v
 

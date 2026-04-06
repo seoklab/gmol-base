@@ -1,5 +1,6 @@
 import enum
 import itertools
+import logging
 import math
 from collections import defaultdict
 from collections.abc import Iterable
@@ -59,6 +60,8 @@ __all__ = [
     "polymer_mol_type",
     "residue_mol_type",
 ]
+
+_logger = logging.getLogger(__name__)
 
 
 class MolType(enum.IntEnum):
@@ -1520,6 +1523,9 @@ def mmcif_assemblies(
     assemblies = _prepare_initial_assemblies(data, ccd)
 
     if not data.pdbx_struct_assembly:
+        _logger.warning(
+            "No pdbx_struct_assembly found, returning initial assemblies"
+        )
         return assemblies
 
     raw_assemblies = _select_assembly_gens(
