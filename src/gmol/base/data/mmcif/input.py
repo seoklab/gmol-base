@@ -334,6 +334,16 @@ def _build_atom_data_from_ref(
     return coords, b_factors
 
 
+def build_ref_ligand_atom_coords(
+    assembly: Assembly,
+    residues: list[Residue],
+    atom_ids: list[str],
+) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
+    """Map assembly coordinates onto a reference ligand atom id ordering."""
+    ref_input = RefLigandInput(smiles="", atom_ids=atom_ids)
+    return _build_atom_data_from_ref(assembly, residues, ref_input)
+
+
 def _update_polymer_residue_coords(
     coords: NDArray[np.float64],
     b_factors: NDArray[np.float64],

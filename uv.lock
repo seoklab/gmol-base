@@ -458,6 +458,7 @@ dependencies = [
     { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11' and sys_platform == 'linux'" },
     { name = "numpy", version = "2.4.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11' and sys_platform == 'linux'" },
     { name = "nurikit", marker = "sys_platform == 'linux'" },
+    { name = "openbabel-wheel", marker = "sys_platform == 'linux'" },
     { name = "pandas", marker = "sys_platform == 'linux'" },
     { name = "pydantic", marker = "sys_platform == 'linux'" },
     { name = "rdkit", marker = "sys_platform == 'linux'" },
@@ -496,6 +497,7 @@ requires-dist = [
     { name = "networkx", specifier = ">=3.0,<4.0" },
     { name = "numpy" },
     { name = "nurikit", specifier = ">=0.1.0a16,<0.2.0" },
+    { name = "openbabel-wheel", specifier = ">=3.1.0" },
     { name = "pandas", specifier = ">=2.0,<3.0" },
     { name = "pydantic", specifier = ">=2.7,<3.0" },
     { name = "rdkit", specifier = ">=2024.3" },
@@ -1343,6 +1345,24 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/d1/0a/12c3f78851c318a8b9a1fe03789e50b4eab6308774aefca7bedc1eeb383c/nurikit-0.1.0b1-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:39b82288bf2cec9cd5b816850ccbb5657f2f4899572c182c92e8517846e1b71b", size = 3310168, upload-time = "2026-03-22T10:54:54.477Z" },
     { url = "https://files.pythonhosted.org/packages/1e/75/f16de3a9355940b3bcd0146be7b6d8054358a731af3a64800f2b5d6e70d5/nurikit-0.1.0b1-cp313-cp313-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:252d4a9f8385d25a7c6ce84149aa5383ea26ccdee7514c4381a42176525661ea", size = 3310626, upload-time = "2026-03-22T10:54:59.464Z" },
     { url = "https://files.pythonhosted.org/packages/49/31/64dab486f3357d6ecdc6253972108761679d92d58701d5dd6242e2215683/nurikit-0.1.0b1-cp313-cp313t-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:a8ce17a99fbe35b7b797db53c9d9a7f25644556164f958099f66c831de761223", size = 3325633, upload-time = "2026-03-22T10:55:04.073Z" },
+]
+
+[[package]]
+name = "openbabel-wheel"
+version = "3.1.1.23"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/63/2d/720579ccff6247aa8fd2d397a7bd592dae72ef0f0133fe6cce2323ea13a2/openbabel_wheel-3.1.1.23.tar.gz", hash = "sha256:68fd86540ff0895d36b26f25721187399fb6073f874f6ae474a574e6acf8759d", size = 13256, upload-time = "2026-03-06T01:31:11.497Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/f8/e6/f18330add6b58e3b1e21e8682fa85385090cb59b0ba355b8c7adf2834278/openbabel_wheel-3.1.1.23-cp310-cp310-manylinux2014_aarch64.manylinux_2_17_aarch64.whl", hash = "sha256:3dd18b2e3456792e497fcac505059317b8c0612538df1e31fa5db3165816e364", size = 15637569, upload-time = "2026-02-17T13:17:37.805Z" },
+    { url = "https://files.pythonhosted.org/packages/4b/be/4ba14367b056b8eb71542903df00fa9e0b0e4425e633abce1424100e38d2/openbabel_wheel-3.1.1.23-cp310-cp310-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:a0ce6d54af38a7380cf335acf349e9402935e3974e9b17a02400b34fe107c07a", size = 16083217, upload-time = "2026-02-17T13:17:40.462Z" },
+    { url = "https://files.pythonhosted.org/packages/c2/2a/17ec36d9c0b90f9c7cffa2a8f79dfd2113a3ac3738742ab354360bcfadd5/openbabel_wheel-3.1.1.23-cp311-cp311-manylinux2014_aarch64.manylinux_2_17_aarch64.whl", hash = "sha256:d740d5b87e101054d2b9e2846c9d445e353ce7217b3088b2cb974c26eb40595f", size = 15637628, upload-time = "2026-02-17T13:17:49.903Z" },
+    { url = "https://files.pythonhosted.org/packages/33/69/af809769228ab7f052237ba56f4678a3e63f594c0d4f982c6293d4ad854c/openbabel_wheel-3.1.1.23-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:733ebba8a93786674d173e0651be894b2debd3cc68a2c4be62739207d51ba257", size = 16083095, upload-time = "2026-02-17T13:17:52.174Z" },
+    { url = "https://files.pythonhosted.org/packages/8b/d4/88625e94fa159c870c3ad7fb0a9a0c77be7b9ead68b2730c4b781243fe0e/openbabel_wheel-3.1.1.23-cp312-cp312-manylinux2014_aarch64.manylinux_2_17_aarch64.whl", hash = "sha256:7fa4edf22b616e6c71065bdb01f028ec6fb4821b7f788cef97edc33a916203cf", size = 15639446, upload-time = "2026-02-17T13:18:01.125Z" },
+    { url = "https://files.pythonhosted.org/packages/9a/a9/3e60dc173672ae40172a1f0c49fc42906d7587503f1f3acce4bd5b0cac7d/openbabel_wheel-3.1.1.23-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:39340af4da11cafabb95542fd110e7ff120e3af085e4e48aa2b8e69cc49b807b", size = 16087232, upload-time = "2026-02-17T13:18:04.563Z" },
+    { url = "https://files.pythonhosted.org/packages/2a/c8/2ee60db27b572d20f2c9a4239df35f5230b1687d738b52c4b0671561f6b8/openbabel_wheel-3.1.1.23-cp313-cp313-manylinux2014_aarch64.manylinux_2_17_aarch64.whl", hash = "sha256:5395eb3fd4ce660a45c3693c65dd8155027a593c9f1fd192dccf69ed01c5295c", size = 15636511, upload-time = "2026-02-17T13:18:12.74Z" },
+    { url = "https://files.pythonhosted.org/packages/22/40/a885b253b15f95460d272a11be9aa039badbdc507dcd7f73256dca8cc339/openbabel_wheel-3.1.1.23-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:b20aae66b907da10489bdee3912571d50b85986cfce8845d4f53f9c855bc2494", size = 16084796, upload-time = "2026-02-17T13:18:14.847Z" },
+    { url = "https://files.pythonhosted.org/packages/26/d8/2cef68780788bc420b0a6c8b0f3d8bfb41cd14900cca43873c744f3d886e/openbabel_wheel-3.1.1.23-cp313-cp313t-manylinux2014_aarch64.manylinux_2_17_aarch64.whl", hash = "sha256:3a9912e5b32ff3139e653db746a43ea4b7da0ce1b5b68b6e63f10f028c5d8a2d", size = 15641869, upload-time = "2026-02-17T13:18:22.976Z" },
+    { url = "https://files.pythonhosted.org/packages/c7/5c/875704cbbc314dd0c6ff0a2d689308a3d626cd64c7c6b48cf299874f484f/openbabel_wheel-3.1.1.23-cp313-cp313t-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:0f56d0ae28e6bbbaaca483abe35dd21d4d2c7f3b1b6f602593f419b2b5f067ac", size = 16067368, upload-time = "2026-02-17T13:18:25.182Z" },
 ]
 
 [[package]]
