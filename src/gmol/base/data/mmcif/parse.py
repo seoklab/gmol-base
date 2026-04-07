@@ -142,9 +142,12 @@ class Scheme(LooseModel):
             "seq_id",  # poly_seq_scheme
             "ndb_seq_num",  # nonpoly_scheme
             "num",  # branch_scheme
-            "pdb_seq_num",  # fallback for nonpoly_scheme, branch_scheme, poly_seq_scheme
-        )
+        ),
     )
+    """This should only be used for ``_pdbx_poly_seq_scheme`` and
+    ``_pdbx_branch_scheme``, as the ``_pdbx_nonpoly_scheme.ndb_seq_num`` is not
+    a mandatory field, and some mmCIF files only set ``_pdbx_nonpoly_scheme.pdb_seq_num``.
+    """
 
     pdb_seq_num: int | None  # this is auth_seq_id (!!!)
     pdb_ins_code: str | None = None
@@ -549,6 +552,14 @@ class Mmcif(LooseModel):
         for d in v:
             ret[d["asym_id"]].append(d)
         return ret
+
+    @field_validator("pdbx_nonpoly_scheme", mode="before")
+    @staticmethod
+    def _nonpoly_fill_seqid(v: list[dict[str, Any]]):
+        for d in v:
+            if (seq_id := d.get("pdb_seq_num")) is not None:
+                d.setdefault("ndb_seq_num", seq_id)
+        return v
 
     @field_validator("struct_asym", mode="before")
     @staticmethod
