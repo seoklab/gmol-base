@@ -142,7 +142,7 @@ class BranchPartner:
     atom_id: str
     leaving_atom_id: str
 
-    comp_id: str = field(compare=False)
+    comp_id: str
     res_id: ResidueId
 
     @classmethod
