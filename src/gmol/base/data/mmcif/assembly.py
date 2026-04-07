@@ -1,5 +1,6 @@
 import enum
 import itertools
+import logging
 import math
 from collections import defaultdict
 from collections.abc import Iterable
@@ -59,6 +60,8 @@ __all__ = [
     "polymer_mol_type",
     "residue_mol_type",
 ]
+
+_logger = logging.getLogger(__name__)
 
 
 class MolType(enum.IntEnum):
@@ -139,7 +142,7 @@ class BranchPartner:
     atom_id: str
     leaving_atom_id: str
 
-    comp_id: str = field(compare=False)
+    comp_id: str
     res_id: ResidueId
 
     @classmethod
@@ -703,7 +706,7 @@ class Assembly(LooseModel):
                 "entity",
                 ["id", "type", "pdbx_description"],
                 [
-                    (entity.id, entity.type, entity.pdbx_description)
+                    (entity.id, entity.type, entity.pdbx_description or ".")
                     for entity in self.entities.values()
                 ],
             )
@@ -1518,6 +1521,13 @@ def mmcif_assemblies(
     data: Mmcif, ccd: dict[str, ChemComp], assembly_id: int | None = None
 ) -> list[Assembly]:
     assemblies = _prepare_initial_assemblies(data, ccd)
+
+    if not data.pdbx_struct_assembly:
+        _logger.warning(
+            "No pdbx_struct_assembly found, returning initial assemblies"
+        )
+        return assemblies
+
     raw_assemblies = _select_assembly_gens(
         data.pdbx_struct_assembly, assembly_id
     )
