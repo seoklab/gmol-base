@@ -91,10 +91,10 @@ class EntityPoly(LooseModel):
 
     @field_validator("nstd_linkage", "nstd_monomer", mode="before")
     @staticmethod
-    def _coerce_bool(v: str | bool | None) -> bool | None:
+    def _coerce_nstd(v: str | bool | None) -> bool | None:
         if isinstance(v, bool):
             return v
-        if v is None:
+        elif v is None or v in (".", "?", ""):
             return None
         return v.lower() in ("yes", "y")
 

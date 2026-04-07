@@ -14,6 +14,7 @@ from typing import ClassVar, Protocol
 import numpy as np
 from numpy.typing import NDArray
 from pydantic import (
+    Field,
     SerializerFunctionWrapHandler,
     TypeAdapter,
     field_serializer,
@@ -31,6 +32,7 @@ from .parse import (
     BranchLinkPartner,
     ChemComp,
     Entity,
+    EntityPoly,
     Mmcif,
     PdbMetadata,
     Scheme,
@@ -419,6 +421,7 @@ class Assembly(LooseModel):
     residues: dict[ResidueId, Residue]
     chains: dict[str, Chain]
     entities: dict[int, Entity]
+    entity_poly: dict[int, EntityPoly] = Field(default_factory=dict)
     connections: list[AssemblyConnection]
 
     @cached_property
@@ -563,6 +566,11 @@ class Assembly(LooseModel):
 
         eids = {chain.entity_id for chain in chains.values()}
         entities = {eid: self.entities[eid] for eid in eids}
+        entity_poly = {
+            eid: self.entity_poly[eid]
+            for eid in eids
+            if eid in self.entity_poly
+        }
 
         return Assembly(
             metadata=self.metadata,
@@ -571,6 +579,7 @@ class Assembly(LooseModel):
             residues=residues,
             chains=chains,
             entities=entities,
+            entity_poly=entity_poly,
             connections=connections,
         )
 
@@ -629,6 +638,12 @@ class Assembly(LooseModel):
             )
         )
 
+        entity_poly = dict(
+            itertools.chain.from_iterable(
+                asm.entity_poly.items() for asm in assemblies
+            )
+        )
+
         return cls(
             metadata=assemblies[0].metadata,
             coords=coords,
@@ -636,6 +651,7 @@ class Assembly(LooseModel):
             residues=residues,
             chains=chains,
             entities=entities,
+            entity_poly=entity_poly,
             connections=connections,
         )
 
@@ -736,12 +752,17 @@ class Assembly(LooseModel):
                 [
                     (
                         eid,
-                        chains_list[0].type.entity_poly_type,
-                        "no",
-                        "no",
+                        self.entity_poly[eid].type,
+                        mmcif_bool(
+                            self.entity_poly[eid].nstd_linkage, lower=True
+                        ),
+                        mmcif_bool(
+                            self.entity_poly[eid].nstd_monomer, lower=True
+                        ),
                         ",".join(c.chain_id for c in chains_list),
                     )
                     for eid, chains_list in sorted(entity_chains.items())
+                    if eid in self.entity_poly
                 ],
             )
             + mmcif_write_block(
@@ -1500,6 +1521,7 @@ def _model_assembly(
         residues=residues,
         chains=chains,
         entities=metadata.entity.copy(),
+        entity_poly=metadata.entity_poly.copy(),
         connections=connections,
     )
 
