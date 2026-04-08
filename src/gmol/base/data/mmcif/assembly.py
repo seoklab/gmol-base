@@ -776,7 +776,7 @@ class Assembly(LooseModel):
                         ),
                         ",".join(self.entity_poly[eid].pdbx_strand_id),
                     )
-                    for eid, chains_list in sorted(entity_chains.items())
+                    for eid in sorted(entity_chains.keys())
                     if eid in self.entity_poly
                 ],
             )
@@ -789,7 +789,13 @@ class Assembly(LooseModel):
                         seqres.seq_id,
                         seqres.comp_id,
                         mmcif_bool(
-                            self.entity_poly_seq[eid][seqres.seq_id].hetero,
+                            seq.hetero
+                            if (
+                                seq := self.entity_poly_seq.get(eid, {}).get(
+                                    seqres.seq_id
+                                )
+                            )
+                            else None,
                             lower=True,
                         ),
                     )
