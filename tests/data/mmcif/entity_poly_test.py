@@ -35,10 +35,10 @@ def test_parse_entity_poly_seq_single_entity(test_data: Path):
 
     seq = mmcif.entity_poly_seq[1]
     assert len(seq) == 76
-    assert seq[42] == EntityPolySeq(
+    assert seq[43] == EntityPolySeq(
         entity_id=1, num=43, mon_id="LEU", hetero=False
     )
-    assert seq[-1] == EntityPolySeq(
+    assert seq[76] == EntityPolySeq(
         entity_id=1, num=76, mon_id="GLY", hetero=False
     )
 
@@ -89,7 +89,7 @@ def test_entity_poly_roundtrip(
             continue
         rseq = reloaded.entity_poly_seq[eid]
         assert len(rseq) == len(seq)
-        for orig, rel in zip(seq, rseq):
+        for orig, rel in zip(seq.values(), rseq.values()):
             assert rel.num == orig.num
             assert rel.mon_id == orig.mon_id
 

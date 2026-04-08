@@ -33,6 +33,7 @@ from .parse import (
     ChemComp,
     Entity,
     EntityPoly,
+    EntityPolySeq,
     Mmcif,
     PdbMetadata,
     Scheme,
@@ -422,6 +423,9 @@ class Assembly(LooseModel):
     chains: dict[str, Chain]
     entities: dict[int, Entity]
     entity_poly: dict[int, EntityPoly] = Field(default_factory=dict)
+    entity_poly_seq: dict[int, dict[int, EntityPolySeq]] = Field(
+        default_factory=dict
+    )
     connections: list[AssemblyConnection]
 
     @cached_property
@@ -571,6 +575,11 @@ class Assembly(LooseModel):
             for eid in eids
             if eid in self.entity_poly
         }
+        entity_poly_seq = {
+            eid: self.entity_poly_seq[eid]
+            for eid in eids
+            if eid in self.entity_poly_seq
+        }
 
         return Assembly(
             metadata=self.metadata,
@@ -580,6 +589,7 @@ class Assembly(LooseModel):
             chains=chains,
             entities=entities,
             entity_poly=entity_poly,
+            entity_poly_seq=entity_poly_seq,
             connections=connections,
         )
 
@@ -643,7 +653,11 @@ class Assembly(LooseModel):
                 asm.entity_poly.items() for asm in assemblies
             )
         )
-
+        entity_poly_seq = dict(
+            itertools.chain.from_iterable(
+                asm.entity_poly_seq.items() for asm in assemblies
+            )
+        )
         return cls(
             metadata=assemblies[0].metadata,
             coords=coords,
@@ -652,6 +666,7 @@ class Assembly(LooseModel):
             chains=chains,
             entities=entities,
             entity_poly=entity_poly,
+            entity_poly_seq=entity_poly_seq,
             connections=connections,
         )
 
@@ -769,7 +784,15 @@ class Assembly(LooseModel):
                 "entity_poly_seq",
                 ["entity_id", "num", "mon_id", "hetero"],
                 [
-                    (eid, seqres.seq_id, seqres.comp_id, "n")
+                    (
+                        eid,
+                        seqres.seq_id,
+                        seqres.comp_id,
+                        mmcif_bool(
+                            self.entity_poly_seq[eid][seqres.seq_id].hetero,
+                            lower=True,
+                        ),
+                    )
                     for eid, seqres_list in sorted(entity_seqres.items())
                     for seqres in seqres_list
                 ],
@@ -1522,6 +1545,7 @@ def _model_assembly(
         chains=chains,
         entities=metadata.entity.copy(),
         entity_poly=metadata.entity_poly.copy(),
+        entity_poly_seq=metadata.entity_poly_seq.copy(),
         connections=connections,
     )
 

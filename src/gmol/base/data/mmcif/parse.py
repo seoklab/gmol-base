@@ -112,15 +112,15 @@ class EntityPolySeq(LooseModel):
     entity_id: int
     num: int
     mon_id: str
-    hetero: bool = False
+    hetero: bool | None = None
 
     @field_validator("hetero", mode="before")
     @staticmethod
-    def _coerce_hetero(v: str | bool | None) -> bool:
+    def _coerce_hetero(v: str | bool | None) -> bool | None:
         if isinstance(v, bool):
             return v
-        if v is None:
-            return False
+        elif v is None or v in (".", "?", ""):
+            return None
         return v.lower() in ("yes", "y")
 
 
@@ -501,7 +501,7 @@ class Mmcif(LooseModel):
 
     entity: dict[int, Entity] = Field(default_factory=dict)
     entity_poly: dict[int, EntityPoly] = Field(default_factory=dict)
-    entity_poly_seq: dict[int, list[EntityPolySeq]] = Field(
+    entity_poly_seq: dict[int, dict[int, EntityPolySeq]] = Field(
         default_factory=dict
     )
 
@@ -600,9 +600,9 @@ class Mmcif(LooseModel):
     @field_validator("entity_poly_seq", mode="before")
     @staticmethod
     def _xform_entity_poly_seq(v: list[dict[str, Any]]):
-        ret = defaultdict(list)
+        ret: dict[int, dict[int, Any]] = defaultdict(dict)
         for d in v:
-            ret[d["entity_id"]].append(d)
+            ret[d["entity_id"]][d["num"]] = d
         return ret
 
     @field_validator(
