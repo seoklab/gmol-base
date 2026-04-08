@@ -12,7 +12,7 @@ def mmcif_bond_order(order: int) -> str:
     return {1: "sing", 2: "doub", 3: "trip", 4: "quad"}[order]
 
 
-def mmcif_bool(pred: bool | None, lower=False) -> str:
+def mmcif_bool(pred: bool | None, lower: bool = False) -> str:
     if pred is None:
         return "?"
     val = "Y" if pred else "N"
