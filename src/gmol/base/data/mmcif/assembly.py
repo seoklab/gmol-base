@@ -759,7 +759,7 @@ class Assembly(LooseModel):
                         mmcif_bool(
                             self.entity_poly[eid].nstd_monomer, lower=True
                         ),
-                        ",".join(c.chain_id for c in chains_list),
+                        ",".join(self.entity_poly[eid].pdbx_strand_id),
                     )
                     for eid, chains_list in sorted(entity_chains.items())
                     if eid in self.entity_poly
