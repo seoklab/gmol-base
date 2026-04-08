@@ -4,16 +4,24 @@
 # https://docs.github.com/github/administering-a-repository/configuration-options-for-dependency-updates
 
 version: 2
-updates:
-  - package-ecosystem: "uv"
-    directory: "/"
+
+multi-ecosystem-groups:
+  py-and-pre-commit-deps:
     schedule:
       interval: "weekly"
       time: "10:00"
       timezone: "Asia/Seoul"
-    groups:
-      py-deps:
-        patterns: ["*"]
+
+updates:
+  - package-ecosystem: "uv"
+    directory: "/"
+    patterns: ["*"]
+    multi-ecosystem-group: py-and-pre-commit-deps
+
+  - package-ecosystem: "pre-commit"
+    directory: "/"
+    patterns: ["*"]
+    multi-ecosystem-group: py-and-pre-commit-deps
 
   - package-ecosystem: "github-actions"
     directory: "/"
