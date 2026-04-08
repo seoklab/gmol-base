@@ -111,3 +111,26 @@ def test_entity_poly_in_roundtrip_cif(
     cif2 = reloaded.to_mmcif(pdb_id)
 
     assert cif.splitlines() == cif2.splitlines()
+
+
+@pytest.mark.parametrize(
+    ("pdb_id", "nstd_monomer_flag"),
+    [("4hf7", True), ("3m8z", True), ("13sy", False), ("7rtb", False)],
+)
+def test_nstd_parsing(
+    test_data: Path,
+    tmp_path: Path,
+    ccd_components: dict[str, ChemComp],
+    pdb_id: str,
+    nstd_monomer_flag: bool,
+):
+    mmcif = load_mmcif_single(test_data / "mmcif" / f"{pdb_id}.cif")
+    assert mmcif.entity_poly[1].nstd_monomer is nstd_monomer_flag
+    assert mmcif.entity_poly[1].nstd_linkage is False
+    asm = mmcif_assemblies(mmcif, ccd_components)[0]
+    cif = asm.to_mmcif(pdb_id)
+    out = tmp_path / f"{pdb_id}_roundtrip.cif"
+    out.write_text(cif)
+    reloaded = load_mmcif_single(out)
+    assert reloaded.entity_poly[1].nstd_monomer is nstd_monomer_flag
+    assert reloaded.entity_poly[1].nstd_linkage is False
