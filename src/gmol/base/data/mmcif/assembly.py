@@ -14,6 +14,7 @@ from typing import ClassVar, Protocol
 import numpy as np
 from numpy.typing import NDArray
 from pydantic import (
+    Field,
     SerializerFunctionWrapHandler,
     TypeAdapter,
     field_serializer,
@@ -22,10 +23,7 @@ from pydantic import (
     model_validator,
 )
 
-from gmol.base.const import (
-    CCD_NAME_TO_ONE_LETTER,
-    aa_restype_3to1,
-)
+from gmol.base.const import CCD_NAME_TO_ONE_LETTER, aa_restype_3to1
 from gmol.base.types import LooseModel
 from .parse import (
     AtomSite,
@@ -34,6 +32,8 @@ from .parse import (
     BranchLinkPartner,
     ChemComp,
     Entity,
+    EntityPoly,
+    EntityPolySeq,
     Mmcif,
     PdbMetadata,
     Scheme,
@@ -73,6 +73,15 @@ class MolType(enum.IntEnum):
     @property
     def is_polymer(self) -> bool:
         return self.value < MolType.Ligand
+
+    @property
+    def entity_poly_type(self) -> str:
+        """Returns the mmCIF _entity_poly.type string for this MolType."""
+        return {
+            MolType.Protein: "polypeptide(L)",
+            MolType.RNA: "polyribonucleotide",
+            MolType.DNA: "polydeoxyribonucleotide",
+        }[self]
 
 
 @dataclass(frozen=True, order=True)
@@ -413,6 +422,10 @@ class Assembly(LooseModel):
     residues: dict[ResidueId, Residue]
     chains: dict[str, Chain]
     entities: dict[int, Entity]
+    entity_poly: dict[int, EntityPoly] = Field(default_factory=dict)
+    entity_poly_seq: dict[int, dict[int, EntityPolySeq]] = Field(
+        default_factory=dict
+    )
     connections: list[AssemblyConnection]
 
     @cached_property
@@ -557,6 +570,16 @@ class Assembly(LooseModel):
 
         eids = {chain.entity_id for chain in chains.values()}
         entities = {eid: self.entities[eid] for eid in eids}
+        entity_poly = {
+            eid: self.entity_poly[eid]
+            for eid in eids
+            if eid in self.entity_poly
+        }
+        entity_poly_seq = {
+            eid: self.entity_poly_seq[eid]
+            for eid in eids
+            if eid in self.entity_poly_seq
+        }
 
         return Assembly(
             metadata=self.metadata,
@@ -565,6 +588,8 @@ class Assembly(LooseModel):
             residues=residues,
             chains=chains,
             entities=entities,
+            entity_poly=entity_poly,
+            entity_poly_seq=entity_poly_seq,
             connections=connections,
         )
 
@@ -623,6 +648,16 @@ class Assembly(LooseModel):
             )
         )
 
+        entity_poly = dict(
+            itertools.chain.from_iterable(
+                asm.entity_poly.items() for asm in assemblies
+            )
+        )
+        entity_poly_seq = dict(
+            itertools.chain.from_iterable(
+                asm.entity_poly_seq.items() for asm in assemblies
+            )
+        )
         return cls(
             metadata=assemblies[0].metadata,
             coords=coords,
@@ -630,6 +665,8 @@ class Assembly(LooseModel):
             residues=residues,
             chains=chains,
             entities=entities,
+            entity_poly=entity_poly,
+            entity_poly_seq=entity_poly_seq,
             connections=connections,
         )
 
@@ -637,8 +674,16 @@ class Assembly(LooseModel):
         merged_branches: dict[int, set[Branch]] = defaultdict(set)
         branch_scheme: dict[str, set[Scheme]] = defaultdict(set)
         nonpoly_scheme: dict[str, set[Scheme]] = defaultdict(set)
+        entity_chains: dict[int, list[Chain]] = defaultdict(list)
+        entity_seqres: dict[int, list[SequenceToResidue]] = {}
+
         for chain in self.chains.values():
             merged_branches[chain.entity_id].update(chain.branches)
+
+            if chain.type.is_polymer:
+                entity_chains[chain.entity_id].append(chain)
+                if chain.entity_id not in entity_seqres:
+                    entity_seqres[chain.entity_id] = chain.seqres
 
             br_schemes = branch_scheme[chain.chain_id]
             br_schemes.update(
@@ -708,6 +753,54 @@ class Assembly(LooseModel):
                 [
                     (entity.id, entity.type, entity.pdbx_description or ".")
                     for entity in self.entities.values()
+                ],
+            )
+            + mmcif_write_block(
+                "entity_poly",
+                [
+                    "entity_id",
+                    "type",
+                    "nstd_linkage",
+                    "nstd_monomer",
+                    "pdbx_strand_id",
+                ],
+                [
+                    (
+                        eid,
+                        self.entity_poly[eid].type,
+                        mmcif_bool(
+                            self.entity_poly[eid].nstd_linkage, lower=True
+                        ),
+                        mmcif_bool(
+                            self.entity_poly[eid].nstd_monomer, lower=True
+                        ),
+                        ",".join(self.entity_poly[eid].pdbx_strand_id),
+                    )
+                    for eid in sorted(entity_chains.keys())
+                    if eid in self.entity_poly
+                ],
+            )
+            + mmcif_write_block(
+                "entity_poly_seq",
+                ["entity_id", "num", "mon_id", "hetero"],
+                [
+                    (
+                        eid,
+                        seqres.seq_id,
+                        seqres.comp_id,
+                        mmcif_bool(
+                            seq.hetero
+                            if (
+                                seq := self.entity_poly_seq.get(eid, {}).get(
+                                    seqres.seq_id
+                                )
+                            )
+                            else None,
+                            lower=True,
+                        ),
+                    )
+                    for eid, seqres_list in sorted(entity_seqres.items())
+                    for seqres in seqres_list
                 ],
             )
             + mmcif_write_block(
@@ -1457,6 +1550,8 @@ def _model_assembly(
         residues=residues,
         chains=chains,
         entities=metadata.entity.copy(),
+        entity_poly=metadata.entity_poly.copy(),
+        entity_poly_seq=metadata.entity_poly_seq.copy(),
         connections=connections,
     )
 
