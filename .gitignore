@@ -1,5 +1,6 @@
 .vscode/launch.json
 _autosummary/
+experimental/*
 
 # From Python.gitignore
 # Byte-compiled / optimized / DLL files
