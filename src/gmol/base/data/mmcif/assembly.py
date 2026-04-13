@@ -1198,7 +1198,7 @@ _pdbx_struct_oper_list.vector[3]           0.0"""
             if not is_standard:
                 return "HETATM"
 
-            if residue_chem_comp.mon_nstd_flag:
+            if not residue_chem_comp.mon_nstd_flag:
                 return "HETATM"
 
             return "ATOM  "
