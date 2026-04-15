@@ -409,7 +409,8 @@ class _PdbAtom:
             f"{self.res_id.chain_id}{self.res_id.seq_id:4d}{self.res_id.ins_code:1}"
             # 28-54
             f"   {self.coords[0]:>8.3f}{self.coords[1]:>8.3f}{self.coords[2]:>8.3f}"
-            # 55-80
+            #                       6         7
+            #                       12345678901234567
             f"{self.occupancy:>6.2f}{self.b_factor:>6.2f}          {self.element.upper():>2}  "
         )
 
@@ -1235,7 +1236,8 @@ _pdbx_struct_oper_list.vector[3]           0.0"""
             res_id = last_atom.res_id
             lines.append(
                 (
-                    # 1-27
+                    #                  1
+                    #                  234567
                     f"TER   {serial:5d}      {res_name:>3} "
                     f"{res_id.chain_id}{res_id.seq_id:4d}{res_id.ins_code:1}"
                 )
