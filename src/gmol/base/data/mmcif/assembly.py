@@ -23,7 +23,7 @@ from pydantic import (
     model_validator,
 )
 
-from gmol.base.const import CCD_NAME_TO_ONE_LETTER, aa_restype_3to1
+from gmol.base.const import CCD_NAME_TO_ONE_LETTER
 from gmol.base.types import LooseModel
 from .parse import (
     AtomSite,
@@ -1183,32 +1183,19 @@ _pdbx_struct_oper_list.vector[3]           0.0"""
             for name, i in atom_names.items()
         }
 
-        def _record_name_for(
-            residue_chem_comp: ChemComp,
-            atom_chain_type: MolType,
-        ) -> str:
-            if atom_chain_type in (MolType.RNA, MolType.DNA):
+        def _record_name_for(group_pdb: str) -> str:
+            record = group_pdb.strip().upper()
+            if record == "ATOM":
                 return "ATOM  "
-
-            if residue_mol_type(residue_chem_comp) != MolType.Protein:
+            if record == "HETATM":
                 return "HETATM"
-
-            comp_id = residue_chem_comp.id
-            is_standard = comp_id in aa_restype_3to1
-            if not is_standard:
-                return "HETATM"
-
-            if residue_chem_comp.mon_nstd_flag:
-                return "HETATM"
-
-            return "ATOM  "
+            raise ValueError(
+                f"Unsupported PDB atom record type: {group_pdb!r}"
+            )
 
         chain_atoms: dict[str, list[_PdbAtom]] = defaultdict(list)
         for atom in atoms:
-            record = _record_name_for(
-                self.residues[atom.residue_id].chem_comp,
-                self.chains[atom.chain_id].type,
-            )
+            record = _record_name_for(atom.group_PDB)
 
             ch = chain_map[atom.chain_id]
             rid = ResidueId(
